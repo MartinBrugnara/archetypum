@@ -13,3 +13,4 @@
 
 # --- Project ---
 dist/
+src/*.js
