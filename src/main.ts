@@ -10,6 +10,10 @@ enum Op {
     DIV
 }
 
+class CdbMessage {
+    constructor(rsName: string, result: number) {}
+}
+
 class FunctionalUnit {
     readonly duration: number;
     protected result: number;
@@ -20,7 +24,7 @@ class FunctionalUnit {
 
     // TODO: in main loop remember to register accepting FU to REG
     tryIssue(clockTime: number, instr: Instruction): boolean {
-        if (this.kind != instr.kind || this.isBusy())
+        if (this.kind !== instr.kind || this.isBusy())
             return false;
         this.instr = instr;
         return true;
@@ -34,13 +38,13 @@ class FunctionalUnit {
     }
 
     computeValue(): void {
-        throw new Error("Implement in child");
+        throw new Error('Implement in child');
     }
 
     writeResult(clockTime: number, cdb: Queue<CdbMessage>): void {
         if (this.isBusy && this.endTime === clockTime) {
             this.computeValue();
-            cdb.push(new CdbMessage(this.name, this.result))
+            cdb.push(new CdbMessage(this.name, this.result));
             this.instr = null;
         }
     }
@@ -50,12 +54,8 @@ class FunctionalUnit {
     }
 
     readCDB(): void {
-        throw new Error("Not implemented yet");
+        throw new Error('Not implemented yet');
     }
-}
-
-class CdbMessage {
-    constructor(rsName: string, result: number) {}
 }
 
 class Queue<T> {
@@ -63,7 +63,7 @@ class Queue<T> {
     push(val: T) {
         this._store.push(val);
     }
-    pop():T | undefined {
+    pop(): T | undefined {
         return this._store.shift();
     }
 }
