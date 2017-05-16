@@ -1,3 +1,3 @@
 export class CdbMessage {
-    constructor(rsName: string, result: number) {}
+    constructor(public rsName: string, public result: number, public dst: string) {}
 }
