@@ -2,11 +2,12 @@ import {Instruction, Op} from './ins'
 import {Queue} from './queue'
 import {CdbMessage} from './cdb'
 
-interface FunctionalUnit {
+export interface FunctionalUnit {
+    readonly name:string;
     tryIssue(clockTime: number, instr: Instruction): boolean;
     execute(clockTime: number): void;
     writeResult(clockTime: number, cdb: Queue<CdbMessage>): void;
-    readCDB(): void;
+    readCDB(cdb: Queue<CdbMessage>): void;
 }
 
 export enum FuKind {ADDER, MULTIPLIER}
@@ -20,7 +21,6 @@ class FunctionalUnitBaseClass implements FunctionalUnit {
 
     constructor(readonly kind: FuKind, readonly name: string) {}
 
-    // TODO: in main loop remember to register accepting FU to REG
     tryIssue(clockTime: number, instr: Instruction): boolean {
         if (this.kind !== instr.kind() || this.isBusy())
             return false;
@@ -42,7 +42,7 @@ class FunctionalUnitBaseClass implements FunctionalUnit {
     writeResult(clockTime: number, cdb: Queue<CdbMessage>): void {
         if (this.isBusy && this.endTime === clockTime) {
             this.computeValue();
-            cdb.push(new CdbMessage(this.name, this.result));
+            cdb.push(new CdbMessage(this.name, this.result, this.instr!.dst));
             this.instr = null;
         }
     }
@@ -51,9 +51,20 @@ class FunctionalUnitBaseClass implements FunctionalUnit {
         return !!this.instr;
     }
 
-    readCDB(): void {
-        // TODO: implement me here
-        throw new Error('Not implemented yet');
+    readCDB(cdb: Queue<CdbMessage>): void {
+        if (this.instr === null) return;
+        if (!this.isBusy || (this.instr.qj === null && this.instr.qk === null))
+            return;
+        for (let msg of cdb) {
+            if (this.instr.qj !== null && this.instr.qj === msg.rsName) {
+                this.instr.vj = msg.result;
+                this.instr.qj = null;
+            }
+            if (this.instr.qk !== null && this.instr.qk === msg.rsName) {
+                this.instr.vk = msg.result;
+                this.instr.qk = null;
+            }
+        }
     }
 }
 

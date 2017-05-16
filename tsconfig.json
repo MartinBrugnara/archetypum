@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
     "target": "es6",
-    "module": "commonjs",
+    "module": "system",
     "moduleResolution": "node",
     "alwaysStrict": true,
     "noFallthroughCasesInSwitch": true,
@@ -15,9 +15,8 @@
     "strictNullChecks": true,
     "allowSyntheticDefaultImports": true,
     "importHelpers": true,
-    "outDir": "./dist/"
-  },
-  "include": [
-    "src/**/*"
-  ]
+    "sourceRoot": "./src/",
+    "outFile": "./dist/archetypum.js",
+    "sourceMap": true
+  }
 }
