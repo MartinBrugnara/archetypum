@@ -228,9 +228,12 @@ class Graphics {
                     '>',
                     '<td>', String(rowid++), '</td>',
                     '<td>', i.toString(), '</td>',
-                    '<td>', String(i.issued >= 0 ? i.issued : ''), '</td>',
-                    '<td>', String(i.executed >= 0 ? i.executed : ''), '</td>',
-                    '<td>', String(i.written >= 0 ? i.written : ''), '</td>',
+                    '<td', (i.issued === this.emu.clock ? ' class="new-val"': '') ,'>',
+                        String(i.issued >= 0 ? i.issued : ''), '</td>',
+                    '<td', (i.executed === this.emu.clock ? ' class="new-val"': '') ,'>',
+                        String(i.executed >= 0 ? i.executed : ''), '</td>',
+                    '<td', (i.written === this.emu.clock ? ' class="new-val"': '') ,'>',
+                        String(i.written >= 0 ? i.written : ''), '</td>',
                 '</tr>',
             ]);
         }
