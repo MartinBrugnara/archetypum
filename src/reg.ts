@@ -1,11 +1,8 @@
-import {RawInstruction, Instruction} from './ins'
-import {Queue} from './queue'
-import {CdbMessage} from './cdb'
 
 
-export type RegConfig = {ints:number, floats:number};
+ type RegConfig = {ints:number, floats:number};
 
-export class Register {
+ class Register {
     private regs: {[key:string]: number} = {};
     private qi: {[key:string]: string | null} = {};
 

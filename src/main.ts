@@ -1,6 +1,3 @@
-import {Emulator} from './emu'
-import {RawInstruction, Op} from './ins'
-import {FuKind} from './fu'
 
 // ---------------------------------------------------------------------------
 // TEST DATA
@@ -14,6 +11,7 @@ let program = [
 ]
 
 function main(){
+    console.log("In main");
     let emu = new Emulator(
         [[FuKind.ADDER, 'ADDR', 3], [FuKind.MULTIPLIER, 'MULT', 3] ],
         {ints:8, floats:8},
@@ -23,4 +21,8 @@ function main(){
     while(emu.step()) {
         console.log(emu);
     }
+
+    console.log("End of main");
 }
+
+main();
