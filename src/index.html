@@ -3,9 +3,168 @@
     <head>
         <title>Archetypum | Tomasulo's algorithm visualizator</title>
         <meta charset="utf-8" />
+        <script src="archetypum.js"></script>
 
+        <style type="text/css">
+
+            html {
+                font-size: 24pt;
+                font-family: Arial, Helvetica Neue;
+            }
+
+            table {
+                border-collapse: collapse;
+                border: 1px solid #000;
+                text-transform: uppercase;
+            }
+
+            table, th, td {
+                /* border: 1px solid #000; */
+            }
+
+            th {
+                padding-left: 10px;
+                padding-right: 10px;
+            }
+            td {
+                padding: 10px;
+            }
+
+            thead tr {
+                background-color: #cbcbcb;
+            }
+
+            tbody tr:nth-child(even) {
+                background-color: #f0f0f0;
+            }
+
+            .tech {
+                font-family: "Courier New", Courier, monospace;
+            }
+
+
+            #sourcecode tr td:nth-child(6),
+            #sourcecode tr td:nth-child(7),
+            #sourcecode tr td:nth-child(8) {
+                text-align: center;
+            }
+
+            #sourcecode tr td:nth-child(2) {padding-right: 5px;}
+            #sourcecode tr td:nth-child(3) {padding-right: 0;}
+            #sourcecode tr td:nth-child(4) {padding-left: 0; padding-right: 0;}
+            #sourcecode tr td:nth-child(5) {padding-left: 0;}
+
+            #sourcecode tr td:nth-child(4):before,
+            #sourcecode tr td:nth-child(5):before {
+                content: ',';
+                display: inline-block;
+                font-size: 18pt;
+            }
+
+            #sourcecode tr.current {
+                background-color: #ffec5e;
+            }
+
+            .new-val {
+                color: mediumvioletred;
+                font-weight: bold;
+            }
+
+
+            .tick, .busy {
+                background-image: url('data:image/svg+xml;utf8,<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" viewBox="0 0 1000 1000" enable-background="new 0 0 1000 1000" xml:space="preserve"><g><path d="M990,190.6l-65.5-63.2L335.2,743.9L73.2,493.2L10,561l327.4,311.6l63.2-67.7l0,0L990,190.6z"/></g></svg>');
+                background-repeat: no-repeat;
+                background-size: 60% 60%;
+                background-position: center;
+            }
+
+
+        </style>
     </head>
     <body>
-        <script src="archetypum.js"></script>
+        <div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th colspan="4">Instr</th>
+                        <th>Issue</th>
+                        <th>Exec</th>
+                        <th>Write</th>
+                    </tr>
+                </thead>
+                <tbody class="tech" id="sourcecode">
+                    <tr>
+                        <td>1</td>
+
+                        <td>MOV</td>
+                        <td>R0</td>
+                        <td>R1</td>
+                        <td>R2</td>
+
+                        <td>2</td>
+                        <td>4</td>
+                        <td>5</td>
+                    </tr>
+                    <tr>
+                        <td>1</td>
+                            <td>MOV</td>
+                            <td>R0</td>
+                            <td>R1</td>
+                            <td>R2</td>
+                        <td>2</td>
+                        <td>4</td>
+                        <td>5</td>
+                    </tr>
+                    <tr class="current">
+                        <td>1</td>
+                            <td>MOV</td>
+                            <td>R0</td>
+                            <td>R1</td>
+                            <td>R2</td>
+                        <td>2</td>
+                        <td>4</td>
+                        <td>5</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+
+        <div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Busy</th>
+                        <th>Op</th>
+                        <th>V<sub>j</sub></th>
+                        <th>V<sub>k</sub></th>
+                        <th>Q<sub>j</sub></th>
+                        <th>Q<sub>k</sub></th>
+                    </tr>
+                </thead>
+                <tbody class="tech" id="rs">
+                    <tr>
+                        <td>ADDR1</td>
+                        <td class="busy"></td>
+                        <td>addd</td>
+                        <td>12</td>
+                        <td></td>
+                        <td></td>
+                        <td>ADDR2</td>
+                    </tr>
+                    <tr>
+                        <td>ADDR1</td>
+                        <td></td>
+                        <td>addd</td>
+                        <td></td>
+                        <td>12</td>
+                        <td>MULT2</td>
+                        <td></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
     </body>
 </html>
