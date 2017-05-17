@@ -2,10 +2,11 @@
  interface FunctionalUnit {
     readonly name:string;
     tryIssue(clockTime: number, instr: Instruction): boolean;
-    execute(clockTime: number): void;
-    writeResult(clockTime: number, cdb: Queue<CdbMessage>): void;
+    execute(clockTime: number): number;
+    writeResult(clockTime: number, cdb: Queue<CdbMessage>): number;
     readCDB(cdb: Queue<CdbMessage>): void;
     isBusy(): boolean;
+    getInstr(): Instruction | null;
 }
 
  enum FuKind {ADDER, MULTIPLIER}
@@ -15,48 +16,51 @@ class FunctionalUnitBaseClass implements FunctionalUnit {
     protected readonly duration: number;
     protected result: number;
     protected instr: Instruction | null = null;
+
+    private issuedTime: number = -1;
     private endTime: number;
 
     constructor(readonly kind: FuKind, readonly name: string) {}
+
+    getInstr(): Instruction | null {
+        return this.instr;
+    }
 
     tryIssue(clockTime: number, instr: Instruction): boolean {
         if (this.kind !== instr.kind() || this.isBusy())
             return false;
         this.instr = instr;
+        this.issuedTime = clockTime;
         return true;
     }
 
-    execute(clockTime: number): void {
-        if (!this.isBusy()) {
-            console.log(clockTime, this.name, "doing nothing");
-            return
+    /* Returns rowid (pc) when exec start, -1 otherwise */
+    execute(clockTime: number): number {
+        if (
+            this.isBusy() && this.isReady()
+            && (!this.endTime || this.endTime < clockTime)
+            && (clockTime >= (this.issuedTime + Number(ISSUE_EXEC_DELAY)))
+        ) {
+            this.endTime = clockTime + this.duration + Number(EXEC_WRITE_DELAY);
+            return this.instr!.pc
         }
-
-        if (!this.isReady()) {
-            console.log(clockTime, this.name, "waitgin for others");
-            console.log(JSON.stringify(this.instr, null, '\t'));
-            return;                                     // not ready yet
-        }
-
-        if (!this.endTime || this.endTime < clockTime) {
-            console.log(clockTime, this.name, "start working", clockTime, this.duration, this.endTime);
-            this.endTime = clockTime + this.duration - 1; // -1 => sub current clock
-        } else {
-            console.log(clockTime, this.name, "already working", clockTime, this.duration, this.endTime);
-        }
-        // TODO: force execute cycle <> writeResult with +1
+        return -1;
     }
 
     computeValue(): void {
         throw new Error('Implement in child');
     }
 
-    writeResult(clockTime: number, cdb: Queue<CdbMessage>): void {
+    /* Return rowid (pc) when it writes a result, -1 otherwise. */
+    writeResult(clockTime: number, cdb: Queue<CdbMessage>): number {
         if (this.isBusy && this.endTime === clockTime) {
             this.computeValue();
             cdb.push(new CdbMessage(this.name, this.result, this.instr!.dst));
+            let pc = this.instr!.pc;
             this.instr = null;
+            return pc;
         }
+        return -1;
     }
 
     isBusy(): boolean {

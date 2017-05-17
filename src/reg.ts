@@ -1,5 +1,3 @@
-
-
  type RegConfig = {ints:number, floats:number};
 
  class Register {
@@ -17,8 +15,8 @@
         }
     }
 
-    patch(ri: RawInstruction):Instruction {
-        let ins = new Instruction(ri.op, ri.dst);
+    patch(ri: RawInstruction, pc: number):Instruction {
+        let ins = new Instruction(ri.op, ri.dst, pc);
 
         let value = parseInt(ri.src0, 10);
         if (isNaN(value)) {                        // then src0 is a reg name
