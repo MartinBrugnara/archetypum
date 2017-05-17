@@ -12,32 +12,38 @@
     }
 
     step():boolean {
-        if (this.pc == this.program.length) return false;
+        if (this.clock > 20) { // DEBUG, safety stop
+            console.error("Shiit 20 iteration?");
+            return false;
+        }
+
 
         this.CDB = new Queue<CdbMessage>();
         this.clock += 1;
 
-        // Issue
-        let rawInst = this.program[this.pc];
-        let inst = this.REG.patch(rawInst);
+        if (this.pc < this.program.length) {       // If code then issue
+            let rawInst = this.program[this.pc];
+            let inst = this.REG.patch(rawInst);
 
-        let issued:boolean = false;
-        for (let fu of this.FUs) {
-            issued = issued || fu.tryIssue(this.clock, inst);
-            if (issued) {
-                this.REG.setProducer(inst, fu.name);
-                break;
+            let issued:boolean = false;
+            for (let fu of this.FUs) {
+                if (fu.tryIssue(this.clock, inst)) {
+                    this.REG.setProducer(inst, fu.name);
+                    this.pc++;
+                    break;
+                }
             }
         }
 
-        if (!issued) return true;                                  // stall
-        this.pc++;
         for (let fu of this.FUs) fu.execute(this.clock);
         for (let fu of this.FUs) fu.writeResult(this.clock, this.CDB);
 
         // TODO: add opt for yield (4 graphics)
         for (let fu of this.FUs) fu.readCDB(this.CDB);
         this.REG.readCDB(this.CDB);
-        return true;
+
+        // if all fu are not busy end
+        for (let fu of this.FUs) if (fu.isBusy()) return true;
+        return this.pc < this.program.length;
     }
 }

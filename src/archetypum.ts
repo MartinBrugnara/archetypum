@@ -15,33 +15,39 @@
     }
 
     step():boolean {
-        if (this.pc == this.program.length) return false;
+        if (this.clock > 20) { // DEBUG, safety stop
+            console.error("Shiit 20 iteration?");
+            return false;
+        }
+
 
         this.CDB = new Queue<CdbMessage>();
         this.clock += 1;
 
-        // Issue
-        let rawInst = this.program[this.pc];
-        let inst = this.REG.patch(rawInst);
+        if (this.pc < this.program.length) {       // If code then issue
+            let rawInst = this.program[this.pc];
+            let inst = this.REG.patch(rawInst);
 
-        let issued:boolean = false;
-        for (let fu of this.FUs) {
-            issued = issued || fu.tryIssue(this.clock, inst);
-            if (issued) {
-                this.REG.setProducer(inst, fu.name);
-                break;
+            let issued:boolean = false;
+            for (let fu of this.FUs) {
+                if (fu.tryIssue(this.clock, inst)) {
+                    this.REG.setProducer(inst, fu.name);
+                    this.pc++;
+                    break;
+                }
             }
         }
 
-        if (!issued) return true;                                  // stall
-        this.pc++;
         for (let fu of this.FUs) fu.execute(this.clock);
         for (let fu of this.FUs) fu.writeResult(this.clock, this.CDB);
 
         // TODO: add opt for yield (4 graphics)
         for (let fu of this.FUs) fu.readCDB(this.CDB);
         this.REG.readCDB(this.CDB);
-        return true;
+
+        // if all fu are not busy end
+        for (let fu of this.FUs) if (fu.isBusy()) return true;
+        return this.pc < this.program.length;
     }
 }
 
@@ -51,6 +57,7 @@
     execute(clockTime: number): void;
     writeResult(clockTime: number, cdb: Queue<CdbMessage>): void;
     readCDB(cdb: Queue<CdbMessage>): void;
+    isBusy(): boolean;
 }
 
  enum FuKind {ADDER, MULTIPLIER}
@@ -72,9 +79,23 @@ class FunctionalUnitBaseClass implements FunctionalUnit {
     }
 
     execute(clockTime: number): void {
-        if (!this.isBusy() || this.instr!.vj === null || this.instr!.vk === null)
+        if (!this.isBusy()) {
+            console.log(clockTime, this.name, "doing nothing");
+            return
+        }
+
+        if (!this.isReady()) {
+            console.log(clockTime, this.name, "waitgin for others");
+            console.log(JSON.stringify(this.instr, null, '\t'));
             return;                                     // not ready yet
-        this.endTime = clockTime + this.duration;
+        }
+
+        if (!this.endTime || this.endTime < clockTime) {
+            console.log(clockTime, this.name, "start working", clockTime, this.duration, this.endTime);
+            this.endTime = clockTime + this.duration - 1; // -1 => sub current clock
+        } else {
+            console.log(clockTime, this.name, "already working", clockTime, this.duration, this.endTime);
+        }
         // TODO: force execute cycle <> writeResult with +1
     }
 
@@ -92,6 +113,11 @@ class FunctionalUnitBaseClass implements FunctionalUnit {
 
     isBusy(): boolean {
         return !!this.instr;
+    }
+
+    isReady(): boolean {
+        // Assumption: vj contains value iff qj === null
+        return this.instr!.qj === null && this.instr!.qk === null
     }
 
     readCDB(cdb: Queue<CdbMessage>): void {
@@ -112,6 +138,8 @@ class FunctionalUnitBaseClass implements FunctionalUnit {
 }
 
 class Adder extends FunctionalUnitBaseClass {
+    readonly duration = 2;
+
     constructor(name: string) {
         super(FuKind.ADDER, name);
     }
@@ -119,10 +147,12 @@ class Adder extends FunctionalUnitBaseClass {
     computeValue() {
         switch (this.instr!.op) {
             case Op.ADD:
-                this.result = this.instr!.vj! + this.instr!.vk!;
+                console.log(this.name, "is add", this.instr!);
+                this.result = this.instr!.vj + this.instr!.vk;
                 break;
             case Op.SUB:
-                this.result = this.instr!.vj! - this.instr!.vk!;
+                console.log(this.name, "is sub", this.instr!);
+                this.result = this.instr!.vj - this.instr!.vk;
                 break;
         }
     }
@@ -130,6 +160,8 @@ class Adder extends FunctionalUnitBaseClass {
 FuMap[FuKind.ADDER] = (name:string) => new Adder(name);
 
 class Multiplier extends FunctionalUnitBaseClass {
+    readonly duration = 4;
+
     constructor(name: string) {
         super(FuKind.MULTIPLIER, name);
     }
@@ -137,10 +169,10 @@ class Multiplier extends FunctionalUnitBaseClass {
     computeValue() {
         switch (this.instr!.op) {
             case Op.MUL:
-                this.result = this.instr!.vj! * this.instr!.vk!;
+                this.result = this.instr!.vj * this.instr!.vk;
                 break;
             case Op.DIV:
-                this.result = this.instr!.vj! / this.instr!.vk!;
+                this.result = this.instr!.vj / this.instr!.vk;
                 break;
         }
     }
@@ -174,8 +206,8 @@ FuMap[FuKind.MULTIPLIER] = (name:string) => new Multiplier(name);
     constructor(
         public op: Op,                     // Operation
         public dst: string,                // destination register (only REG)
-        public vj: number | null = null,   // First source operand value
-        public vk: number | null = null,   // Seconds source operand value
+        public vj: number = 0,   // First source operand value
+        public vk: number = 0,   // Seconds source operand value
         public qj: string | null = null,   // RS name producing first operand
         public qk: string | null = null    // RS name producing second operand
     ){}
@@ -229,25 +261,28 @@ OpKindMap[Op.DIV] = FuKind.MULTIPLIER;
     patch(ri: RawInstruction):Instruction {
         let ins = new Instruction(ri.op, ri.dst);
 
-        ins.vj = parseInt(ri.src0, 10);
-        if (isNaN(ins.vj)) {                        // then src0 is a reg name
-            ins.vj = this.regs[ri.src0]
-            if (isNaN(ins.vj)) {                    // then we wait for RS
-                ins.vj = null;
+        let value = parseInt(ri.src0, 10);
+        if (isNaN(value)) {                        // then src0 is a reg name
+            if (this.qi[ri.src0] === null) {
+                value = this.regs[ri.src0];
+            } else {
+                value = 0;
                 ins.qj = this.qi[ri.src0];
             }
         }
+        ins.vj = value;
 
-        if (ri.src1 !== null) {
-            ins.vk = parseInt(ri.src1, 10);
-            if (isNaN(ins.vk)) {                     // then src1 is a reg name
-                ins.vk = this.regs[ri.src1]
-                if (isNaN(ins.vk)) {                 // then we wait for RS
-                    ins.vk = null;
-                    ins.qk = this.qi[ri.src1];
-                }
+        value = parseInt(ri.src1, 10);
+        if (isNaN(value)) {                        // then src1 is a reg name
+            if (this.qi[ri.src1] === null) {
+                value = this.regs[ri.src1];
+            } else {
+                value = 0;
+                ins.qk = this.qi[ri.src1];
             }
         }
+        ins.vk = value;
+
 
         return ins
     }
@@ -288,6 +323,7 @@ function main(){
 
     while(emu.step()) {
         console.log(emu);
+        console.log(JSON.stringify(emu.REG, null, '\t'));
     }
 
     console.log("End of main");
