@@ -3,7 +3,6 @@
     <head>
         <title>Archetypum | Tomasulo's algorithm visualizator</title>
         <meta charset="utf-8" />
-        <script src="archetypum.js"></script>
 
         <style type="text/css">
 
@@ -18,8 +17,12 @@
                 text-transform: uppercase;
             }
 
+            table sub {
+                text-transform: none;
+            }
+
             table, th, td {
-                /* border: 1px solid #000; */
+                text-align: center;
             }
 
             th {
@@ -28,6 +31,10 @@
             }
             td {
                 padding: 10px;
+            }
+
+            td, th {
+                width: 116px;
             }
 
             thead tr {
@@ -43,26 +50,13 @@
             }
 
 
-            #sourcecode tr td:nth-child(6),
-            #sourcecode tr td:nth-child(7),
-            #sourcecode tr td:nth-child(8) {
-                text-align: center;
-            }
-
-            #sourcecode tr td:nth-child(2) {padding-right: 5px;}
-            #sourcecode tr td:nth-child(3) {padding-right: 0;}
-            #sourcecode tr td:nth-child(4) {padding-left: 0; padding-right: 0;}
-            #sourcecode tr td:nth-child(5) {padding-left: 0;}
-
-            #sourcecode tr td:nth-child(4):before,
-            #sourcecode tr td:nth-child(5):before {
-                content: ',';
-                display: inline-block;
-                font-size: 18pt;
-            }
-
             #sourcecode tr.current {
                 background-color: #ffec5e;
+            }
+
+            #sourcecode tr td:nth-child(2),
+            #sourcecode tr th:nth-child(2) {
+                width: 250px;
             }
 
             .new-val {
@@ -82,12 +76,19 @@
         </style>
     </head>
     <body>
+
+        <div>
+            Clock: <span id="clock"></span> <br>
+            Speed: - <input id="speed" type="range" min="1" max="20" step="1" value="5" /> + <br>
+        </div>
+
         <div>
             <table>
+                <caption>Source Code Execution</caption>
                 <thead>
                     <tr>
                         <th>#</th>
-                        <th colspan="4">Instr</th>
+                        <th>Instr</th>
                         <th>Issue</th>
                         <th>Exec</th>
                         <th>Write</th>
@@ -97,10 +98,7 @@
                     <tr>
                         <td>1</td>
 
-                        <td>MOV</td>
-                        <td>R0</td>
-                        <td>R1</td>
-                        <td>R2</td>
+                        <td>MOV&nbsp;R0,R1,R2</td>
 
                         <td>2</td>
                         <td>4</td>
@@ -133,6 +131,7 @@
 
         <div>
             <table>
+                <caption>Reservation Stations</caption>
                 <thead>
                     <tr>
                         <th>Name</th>
@@ -166,5 +165,35 @@
                 </tbody>
             </table>
         </div>
+
+        <div>
+            <table>
+                <caption>Register Status (Q<sub>i</sub>)</caption>
+                <thead id="reg_head">
+                    <tr>
+                        <th>R0</th>
+                        <th>R1</th>
+                        <th>R2</th>
+                        <th>R3</th>
+                        <th>R4</th>
+                        <th>R6</th>
+                        <th>R7</th>
+                    </tr>
+                <thead>
+                <tbody class="tech" id="reg_body">
+                    <tr>
+                        <td>ADDR13</td>
+                        <td>12</td>
+                        <td></td>
+                        <td>ADDR7</td>
+                        <td></td>
+                        <td>3</td>
+                        <td>MULE3</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <script src="archetypum.js"></script>
     </body>
 </html>

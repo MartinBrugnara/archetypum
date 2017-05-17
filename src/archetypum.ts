@@ -2,14 +2,14 @@
     constructor(public rsName: string, public result: number, public dst: string) {}
 }
  class Emulator {
-    private clock:number = 0;
-    private pc:number = 0;
+    public clock:number = 0;
+    public pc:number = 0;
 
     REG:Register;
     FUs:FunctionalUnit[];
     CDB:Queue<CdbMessage>;
 
-    constructor(fuConf: FuConfig, regConf: RegConfig, private program:Program) {
+    constructor(fuConf: FuConfig, regConf: RegConfig, public readonly program:Program) {
         this.REG = new Register(regConf);
         this.FUs = FuFactory(fuConf)
     }
@@ -26,11 +26,12 @@
 
         if (this.pc < this.program.length) {       // If code then issue
             let rawInst = this.program[this.pc];
-            let inst = this.REG.patch(rawInst);
+            let inst = this.REG.patch(rawInst, this.pc);
 
             let issued:boolean = false;
             for (let fu of this.FUs) {
                 if (fu.tryIssue(this.clock, inst)) {
+                    this.program[this.pc].issued = this.clock;
                     this.REG.setProducer(inst, fu.name);
                     this.pc++;
                     break;
@@ -38,8 +39,15 @@
             }
         }
 
-        for (let fu of this.FUs) fu.execute(this.clock);
-        for (let fu of this.FUs) fu.writeResult(this.clock, this.CDB);
+        for (let fu of this.FUs) {
+            let rowid = fu.execute(this.clock);
+            if (rowid >= 0) this.program[rowid].executed = this.clock;
+        }
+
+        for (let fu of this.FUs) {
+            let rowid = fu.writeResult(this.clock, this.CDB);
+            if (rowid >= 0) this.program[rowid].written = this.clock;
+        }
 
         // TODO: add opt for yield (4 graphics)
         for (let fu of this.FUs) fu.readCDB(this.CDB);
@@ -54,10 +62,11 @@
  interface FunctionalUnit {
     readonly name:string;
     tryIssue(clockTime: number, instr: Instruction): boolean;
-    execute(clockTime: number): void;
-    writeResult(clockTime: number, cdb: Queue<CdbMessage>): void;
+    execute(clockTime: number): number;
+    writeResult(clockTime: number, cdb: Queue<CdbMessage>): number;
     readCDB(cdb: Queue<CdbMessage>): void;
     isBusy(): boolean;
+    getInstr(): Instruction | null;
 }
 
  enum FuKind {ADDER, MULTIPLIER}
@@ -67,48 +76,51 @@ class FunctionalUnitBaseClass implements FunctionalUnit {
     protected readonly duration: number;
     protected result: number;
     protected instr: Instruction | null = null;
+
+    private issuedTime: number = -1;
     private endTime: number;
 
     constructor(readonly kind: FuKind, readonly name: string) {}
+
+    getInstr(): Instruction | null {
+        return this.instr;
+    }
 
     tryIssue(clockTime: number, instr: Instruction): boolean {
         if (this.kind !== instr.kind() || this.isBusy())
             return false;
         this.instr = instr;
+        this.issuedTime = clockTime;
         return true;
     }
 
-    execute(clockTime: number): void {
-        if (!this.isBusy()) {
-            console.log(clockTime, this.name, "doing nothing");
-            return
+    /* Returns rowid (pc) when exec start, -1 otherwise */
+    execute(clockTime: number): number {
+        if (
+            this.isBusy() && this.isReady()
+            && (!this.endTime || this.endTime < clockTime)
+            && (clockTime >= (this.issuedTime + Number(ISSUE_EXEC_DELAY)))
+        ) {
+            this.endTime = clockTime + this.duration + Number(EXEC_WRITE_DELAY);
+            return this.instr!.pc
         }
-
-        if (!this.isReady()) {
-            console.log(clockTime, this.name, "waitgin for others");
-            console.log(JSON.stringify(this.instr, null, '\t'));
-            return;                                     // not ready yet
-        }
-
-        if (!this.endTime || this.endTime < clockTime) {
-            console.log(clockTime, this.name, "start working", clockTime, this.duration, this.endTime);
-            this.endTime = clockTime + this.duration - 1; // -1 => sub current clock
-        } else {
-            console.log(clockTime, this.name, "already working", clockTime, this.duration, this.endTime);
-        }
-        // TODO: force execute cycle <> writeResult with +1
+        return -1;
     }
 
     computeValue(): void {
         throw new Error('Implement in child');
     }
 
-    writeResult(clockTime: number, cdb: Queue<CdbMessage>): void {
+    /* Return rowid (pc) when it writes a result, -1 otherwise. */
+    writeResult(clockTime: number, cdb: Queue<CdbMessage>): number {
         if (this.isBusy && this.endTime === clockTime) {
             this.computeValue();
             cdb.push(new CdbMessage(this.name, this.result, this.instr!.dst));
+            let pc = this.instr!.pc;
             this.instr = null;
+            return pc;
         }
+        return -1;
     }
 
     isBusy(): boolean {
@@ -190,14 +202,58 @@ FuMap[FuKind.MULTIPLIER] = (name:string) => new Multiplier(name);
     }
     return fus;
 }
+class Graphics {
+
+    clk: HTMLElement = document.getElementById('clock')!;
+    src: HTMLElement = document.getElementById('sourcecode')!;
+    rs: HTMLElement = document.getElementById('rs')!;
+    regh: HTMLElement = document.getElementById('reg_head')!;
+    regb: HTMLElement = document.getElementById('reg_body')!;
+
+    constructor(private emu: Emulator) {}
+
+    paint(): void {
+        this.clk.innerHTML = String(this.emu.clock);
+        this.src.innerHTML = this.renderSrc();
+    }
+
+    renderSrc(): string {
+        let rowid = 0;
+
+        let html:string[][] = [];
+        for (let i of this.emu.program) {
+            html.push([
+                '<tr',
+                    (this.emu.pc === rowid ? ' class="current"' : ''),
+                    '>',
+                    '<td>', String(rowid++), '</td>',
+                    '<td>', i.toString(), '</td>',
+                    '<td>', String(i.issued >= 0 ? i.issued : ''), '</td>',
+                    '<td>', String(i.executed >= 0 ? i.executed : ''), '</td>',
+                    '<td>', String(i.written >= 0 ? i.written : ''), '</td>',
+                '</tr>',
+            ]);
+        }
+        return Array.prototype.concat.apply([], html).join('');
+    }
+}
 
  class RawInstruction {
+    public issued:number = -1;
+    public executed:number = -1;
+    public written:number = -1;
+
+
     constructor(
         public op: Op,
         public src0: string,
         public src1: string,
         public dst: string
     ){}
+
+    toString(): string {
+        return `${OpString[this.op]} ${this.src0},${this.src1},${this.dst}`;
+    }
 }
 
  type Program = RawInstruction[];
@@ -206,6 +262,8 @@ FuMap[FuKind.MULTIPLIER] = (name:string) => new Multiplier(name);
     constructor(
         public op: Op,                     // Operation
         public dst: string,                // destination register (only REG)
+        public pc: number,
+
         public vj: number = 0,   // First source operand value
         public vk: number = 0,   // Seconds source operand value
         public qj: string | null = null,   // RS name producing first operand
@@ -218,13 +276,19 @@ FuMap[FuKind.MULTIPLIER] = (name:string) => new Multiplier(name);
 }
 
 
- enum Op {ADD, SUB, MUL, DIV}
+enum Op {ADD, SUB, MUL, DIV}
 
 let OpKindMap: {[index:number] : FuKind} = {}
 OpKindMap[Op.ADD] = FuKind.ADDER;
 OpKindMap[Op.SUB] = FuKind.ADDER;
 OpKindMap[Op.MUL] = FuKind.MULTIPLIER;
 OpKindMap[Op.DIV] = FuKind.MULTIPLIER;
+
+let OpString: {[index:number]: string} = {}
+OpString[Op.ADD] = "ADD";
+OpString[Op.SUB] = "SUB";
+OpString[Op.MUL] = "MUL";
+OpString[Op.DIV] = "DIV";
  class Queue<T> {
     _store: T[] = [];
 
@@ -239,8 +303,6 @@ OpKindMap[Op.DIV] = FuKind.MULTIPLIER;
         return this._store.shift();
     }
 }
-
-
  type RegConfig = {ints:number, floats:number};
 
  class Register {
@@ -258,8 +320,8 @@ OpKindMap[Op.DIV] = FuKind.MULTIPLIER;
         }
     }
 
-    patch(ri: RawInstruction):Instruction {
-        let ins = new Instruction(ri.op, ri.dst);
+    patch(ri: RawInstruction, pc: number):Instruction {
+        let ins = new Instruction(ri.op, ri.dst, pc);
 
         let value = parseInt(ri.src0, 10);
         if (isNaN(value)) {                        // then src0 is a reg name
@@ -313,7 +375,19 @@ let program = [
     new RawInstruction(Op.DIV, 'R1', '3', 'R3'),
 ]
 
-function main(){
+// ---------------------------------------------------------------------------
+// Settings from GUI
+const ISSUE_EXEC_DELAY = true;
+const EXEC_WRITE_DELAY = true;
+
+// ---------------------------------------------------------------------------
+// Testing main
+
+function sleep(s:number) {
+    return new Promise(x => setTimeout(x, s * 1000));
+}
+
+async function main(){
     console.log("In main");
     let emu = new Emulator(
         [[FuKind.ADDER, 'ADDR', 3], [FuKind.MULTIPLIER, 'MULT', 3] ],
@@ -321,10 +395,16 @@ function main(){
         program
     )
 
+    let speed: HTMLInputElement = <HTMLInputElement>document.getElementById('speed')!;
+
+    let g = new Graphics(emu);
+    g.paint();
+    await sleep(10/Number(speed.value));
     while(emu.step()) {
-        console.log(emu);
-        console.log(JSON.stringify(emu.REG, null, '\t'));
+        g.paint();
+        await sleep(10/Number(speed.value));
     }
+    g.paint();
 
     console.log("End of main");
 }
