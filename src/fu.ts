@@ -5,6 +5,7 @@
     execute(clockTime: number): void;
     writeResult(clockTime: number, cdb: Queue<CdbMessage>): void;
     readCDB(cdb: Queue<CdbMessage>): void;
+    isBusy(): boolean;
 }
 
  enum FuKind {ADDER, MULTIPLIER}
@@ -26,9 +27,23 @@ class FunctionalUnitBaseClass implements FunctionalUnit {
     }
 
     execute(clockTime: number): void {
-        if (!this.isBusy() || this.instr!.vj === null || this.instr!.vk === null)
+        if (!this.isBusy()) {
+            console.log(clockTime, this.name, "doing nothing");
+            return
+        }
+
+        if (!this.isReady()) {
+            console.log(clockTime, this.name, "waitgin for others");
+            console.log(JSON.stringify(this.instr, null, '\t'));
             return;                                     // not ready yet
-        this.endTime = clockTime + this.duration;
+        }
+
+        if (!this.endTime || this.endTime < clockTime) {
+            console.log(clockTime, this.name, "start working", clockTime, this.duration, this.endTime);
+            this.endTime = clockTime + this.duration - 1; // -1 => sub current clock
+        } else {
+            console.log(clockTime, this.name, "already working", clockTime, this.duration, this.endTime);
+        }
         // TODO: force execute cycle <> writeResult with +1
     }
 
@@ -46,6 +61,11 @@ class FunctionalUnitBaseClass implements FunctionalUnit {
 
     isBusy(): boolean {
         return !!this.instr;
+    }
+
+    isReady(): boolean {
+        // Assumption: vj contains value iff qj === null
+        return this.instr!.qj === null && this.instr!.qk === null
     }
 
     readCDB(cdb: Queue<CdbMessage>): void {
@@ -66,6 +86,8 @@ class FunctionalUnitBaseClass implements FunctionalUnit {
 }
 
 class Adder extends FunctionalUnitBaseClass {
+    readonly duration = 2;
+
     constructor(name: string) {
         super(FuKind.ADDER, name);
     }
@@ -73,10 +95,12 @@ class Adder extends FunctionalUnitBaseClass {
     computeValue() {
         switch (this.instr!.op) {
             case Op.ADD:
-                this.result = this.instr!.vj! + this.instr!.vk!;
+                console.log(this.name, "is add", this.instr!);
+                this.result = this.instr!.vj + this.instr!.vk;
                 break;
             case Op.SUB:
-                this.result = this.instr!.vj! - this.instr!.vk!;
+                console.log(this.name, "is sub", this.instr!);
+                this.result = this.instr!.vj - this.instr!.vk;
                 break;
         }
     }
@@ -84,6 +108,8 @@ class Adder extends FunctionalUnitBaseClass {
 FuMap[FuKind.ADDER] = (name:string) => new Adder(name);
 
 class Multiplier extends FunctionalUnitBaseClass {
+    readonly duration = 4;
+
     constructor(name: string) {
         super(FuKind.MULTIPLIER, name);
     }
@@ -91,10 +117,10 @@ class Multiplier extends FunctionalUnitBaseClass {
     computeValue() {
         switch (this.instr!.op) {
             case Op.MUL:
-                this.result = this.instr!.vj! * this.instr!.vk!;
+                this.result = this.instr!.vj * this.instr!.vk;
                 break;
             case Op.DIV:
-                this.result = this.instr!.vj! / this.instr!.vk!;
+                this.result = this.instr!.vj / this.instr!.vk;
                 break;
         }
     }

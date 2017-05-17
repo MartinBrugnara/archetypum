@@ -20,6 +20,7 @@ function main(){
 
     while(emu.step()) {
         console.log(emu);
+        console.log(JSON.stringify(emu.REG, null, '\t'));
     }
 
     console.log("End of main");

@@ -14,8 +14,8 @@
     constructor(
         public op: Op,                     // Operation
         public dst: string,                // destination register (only REG)
-        public vj: number | null = null,   // First source operand value
-        public vk: number | null = null,   // Seconds source operand value
+        public vj: number = 0,   // First source operand value
+        public vk: number = 0,   // Seconds source operand value
         public qj: string | null = null,   // RS name producing first operand
         public qk: string | null = null    // RS name producing second operand
     ){}

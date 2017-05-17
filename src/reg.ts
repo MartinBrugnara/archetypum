@@ -20,25 +20,28 @@
     patch(ri: RawInstruction):Instruction {
         let ins = new Instruction(ri.op, ri.dst);
 
-        ins.vj = parseInt(ri.src0, 10);
-        if (isNaN(ins.vj)) {                        // then src0 is a reg name
-            ins.vj = this.regs[ri.src0]
-            if (isNaN(ins.vj)) {                    // then we wait for RS
-                ins.vj = null;
+        let value = parseInt(ri.src0, 10);
+        if (isNaN(value)) {                        // then src0 is a reg name
+            if (this.qi[ri.src0] === null) {
+                value = this.regs[ri.src0];
+            } else {
+                value = 0;
                 ins.qj = this.qi[ri.src0];
             }
         }
+        ins.vj = value;
 
-        if (ri.src1 !== null) {
-            ins.vk = parseInt(ri.src1, 10);
-            if (isNaN(ins.vk)) {                     // then src1 is a reg name
-                ins.vk = this.regs[ri.src1]
-                if (isNaN(ins.vk)) {                 // then we wait for RS
-                    ins.vk = null;
-                    ins.qk = this.qi[ri.src1];
-                }
+        value = parseInt(ri.src1, 10);
+        if (isNaN(value)) {                        // then src1 is a reg name
+            if (this.qi[ri.src1] === null) {
+                value = this.regs[ri.src1];
+            } else {
+                value = 0;
+                ins.qk = this.qi[ri.src1];
             }
         }
+        ins.vk = value;
+
 
         return ins
     }
