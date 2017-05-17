@@ -1,8 +1,5 @@
-import {Instruction, Op} from './ins'
-import {Queue} from './queue'
-import {CdbMessage} from './cdb'
 
-export interface FunctionalUnit {
+ interface FunctionalUnit {
     readonly name:string;
     tryIssue(clockTime: number, instr: Instruction): boolean;
     execute(clockTime: number): void;
@@ -10,7 +7,7 @@ export interface FunctionalUnit {
     readCDB(cdb: Queue<CdbMessage>): void;
 }
 
-export enum FuKind {ADDER, MULTIPLIER}
+ enum FuKind {ADDER, MULTIPLIER}
 let FuMap: {[key:number]: (name:string) => FunctionalUnit} = {}
 
 class FunctionalUnitBaseClass implements FunctionalUnit {
@@ -105,8 +102,8 @@ class Multiplier extends FunctionalUnitBaseClass {
 FuMap[FuKind.MULTIPLIER] = (name:string) => new Multiplier(name);
 
 
-export type FuConfig = [[FuKind, string, number]];
-export function assembleFunctionalUnits(conf: FuConfig): FunctionalUnit[] {
+ type FuConfig = [[FuKind, string, number]];
+ function FuFactory(conf: FuConfig): FunctionalUnit[] {
     let fus:FunctionalUnit[] = [];
     for (let fuc of conf) {
         for (let i=0; i<fuc[2]; i++) {

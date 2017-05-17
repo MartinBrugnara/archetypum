@@ -1,6 +1,5 @@
-import {FuKind} from './fu'
 
-export class RawInstruction {
+ class RawInstruction {
     constructor(
         public op: Op,
         public src0: string,
@@ -9,9 +8,9 @@ export class RawInstruction {
     ){}
 }
 
-export type Program = RawInstruction[];
+ type Program = RawInstruction[];
 
-export class Instruction {
+ class Instruction {
     constructor(
         public op: Op,                     // Operation
         public dst: string,                // destination register (only REG)
@@ -27,7 +26,7 @@ export class Instruction {
 }
 
 
-export enum Op {ADD, SUB, MUL, DIV}
+ enum Op {ADD, SUB, MUL, DIV}
 
 let OpKindMap: {[index:number] : FuKind} = {}
 OpKindMap[Op.ADD] = FuKind.ADDER;

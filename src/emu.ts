@@ -1,10 +1,4 @@
-import {FuConfig, assembleFunctionalUnits as FuFactory, FunctionalUnit} from './fu'
-import {RegConfig, Register} from './reg'
-import {Queue} from './queue'
-import {Program} from './ins'
-import {CdbMessage} from './cdb'
-
-export class Emulator {
+ class Emulator {
     private clock:number = 0;
     private pc:number = 0;
 

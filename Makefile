@@ -1,10 +1,11 @@
 .PHONY: build, dist, lint, install
 
-build: dist
-	tsc -p tsconfig.json
+SHELL=/bin/bash -O extglob 
 
-watch: dist
-	tsc -w -p tsconfig.json
+build: dist clean 
+	cat ./src/!(main).ts ./src/main.ts > ./src/archetypum.ts
+	tsc -p tsconfig.json
+	cp ./src/index.html ./dist/
 
 lint:
 	tslint --type-check --project ./src/
@@ -15,3 +16,7 @@ dist:
 install:
 	npm install -g typescript
 	npm install -g tslint
+
+clean:
+	rm -f ./src/archetypum.ts
+	rm -rf dist/*.{js,map}

@@ -1,4 +1,4 @@
-export class Queue<T> {
+ class Queue<T> {
     _store: T[] = [];
 
     [Symbol.iterator]() {
