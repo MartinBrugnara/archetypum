@@ -1,5 +1,5 @@
 
- interface FunctionalUnit {
+interface FunctionalUnit {
     readonly name:string;
     tryIssue(clockTime: number, instr: Instruction): boolean;
     execute(clockTime: number): number;
@@ -9,7 +9,7 @@
     getInstr(): Instruction | null;
 }
 
- enum FuKind {ADDER, MULTIPLIER}
+enum FuKind {ADDER, MULTIPLIER}
 let FuMap: {[key:number]: (name:string) => FunctionalUnit} = {}
 
 class FunctionalUnitBaseClass implements FunctionalUnit {
