@@ -1,8 +1,8 @@
  type RegConfig = {ints:number, floats:number};
 
  class Register {
-    private regs: {[key:string]: number} = {};
-    private qi: {[key:string]: string | null} = {};
+    public regs: {[key:string]: number} = {};
+    public qi: {[key:string]: string | null} = {};
 
     constructor(conf:RegConfig){
         for(let i=0; i<conf.ints; i++) {
