@@ -1,47 +1,92 @@
+// some spaghetti code from 2AM:w
+var ISSUE_EXEC_DELAY:boolean = true;
+var EXEC_WRITE_DELAY:boolean = true;
 
-// ---------------------------------------------------------------------------
-// TEST DATA
-// ---------------------------------------------------------------------------
+let ex_1_src = `ADD   3,5,R0
+SUB  R0,2,R0
+MUL  R0,1,R1
+DIV  R1,3,R3
+`
 
-let program = [
-    new RawInstruction(Op.ADD,  '3', '5', 'R0'),
-    new RawInstruction(Op.SUB, 'R0', '2', 'R0'),
-    new RawInstruction(Op.MUL, 'R0', '1', 'R1'),
-    new RawInstruction(Op.DIV, 'R1', '3', 'R3'),
-]
+let menu: HTMLElement = document.getElementById('menu')!;
+let ex_1: HTMLElement = document.getElementById('ex-1')!;
+let rdy: HTMLElement = document.getElementById('rdy')!;
+let raw_src: HTMLInputElement = <HTMLInputElement>document.getElementById('raw-src')!;
 
-// ---------------------------------------------------------------------------
-// Settings from GUI
-const ISSUE_EXEC_DELAY = true;
-const EXEC_WRITE_DELAY = true;
+let iaddr: HTMLInputElement = <HTMLInputElement>document.getElementById('iaddr')!;
+let imult: HTMLInputElement = <HTMLInputElement>document.getElementById('imult')!;
+let ireg: HTMLInputElement  = <HTMLInputElement>document.getElementById('ri')!;
+let freg: HTMLInputElement  = <HTMLInputElement>document.getElementById('rf')!;
+let ied: HTMLInputElement   = <HTMLInputElement>document.getElementById('ied')!;
+let ewd: HTMLInputElement   = <HTMLInputElement>document.getElementById('ewd')!;
 
-// ---------------------------------------------------------------------------
-// Testing main
+let rst: HTMLElement = document.getElementById('reset')!;
+let load: HTMLElement = document.getElementById('load')!;
+let play: HTMLElement = document.getElementById('play')!;
+let pausebtn: HTMLElement = document.getElementById('pause')!;
+let one_step: HTMLElement = document.getElementById('step')!;
+let speed: HTMLInputElement   = <HTMLInputElement>document.getElementById('speed')!;
 
-function sleep(s:number) {
-    return new Promise(x => setTimeout(x, s * 1000));
+function main():void {
+    ex_1.onclick = () => raw_src.value = ex_1_src;
+    rdy.onclick = setup;
+
+    rst.onclick = () => {
+        pause();
+        setup();
+    }
+
+    load.onclick = () => {
+        pause();
+        menu.classList.remove('hide')
+    }
+
+    play.onclick = playloop;
+    pausebtn.onclick = pause;
+    one_step.onclick = () => {
+        pause();
+        STEP()
+    };
 }
 
-async function main(){
-    console.log("In main");
-    let emu = new Emulator(
-        [[FuKind.ADDER, 'ADDR', 3], [FuKind.MULTIPLIER, 'MULT', 3] ],
-        {ints:8, floats:8},
-        program
-    )
+function playloop() {
+    if(STEP()) LOOP = setTimeout(playloop, (10/Number(speed.value) * 1000));
+}
 
-    let speed: HTMLInputElement = <HTMLInputElement>document.getElementById('speed')!;
+function pause() {
+    if (LOOP) clearTimeout(LOOP);
+}
+
+
+let safeInt = (s:string, fallback=0) => isNaN(parseInt(s, 10)) ? fallback : parseInt(s, 10);
+
+var STEP: () => boolean;
+var LOOP: number;
+
+function setup() {
+    ISSUE_EXEC_DELAY = ied.checked;
+    EXEC_WRITE_DELAY = ewd.checked;
+
+
+    let emu = new Emulator(
+        [
+            [FuKind.ADDER, 'ADDR', safeInt(iaddr.value, 3)],
+            [FuKind.MULTIPLIER, 'MULT', safeInt(imult.value, 3)]
+        ],
+        {ints: safeInt(ireg.value), floats: safeInt(freg.value)},
+        parse(raw_src.value)
+    )
 
     let g = new Graphics(emu);
     g.paint();
-    await sleep(10/Number(speed.value));
-    while(emu.step()) {
-        g.paint();
-        await sleep(10/Number(speed.value));
-    }
-    g.paint();
 
-    console.log("End of main");
+    STEP = ():boolean => {
+        var notEof = emu.step()
+        g.paint();
+        return notEof
+    }
+
+    menu.classList.add('hide');
 }
 
 main();

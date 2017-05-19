@@ -1,5 +1,4 @@
-
- class RawInstruction {
+class RawInstruction {
     public issued:number = -1;
     public executed:number = -1;
     public written:number = -1;
@@ -17,18 +16,18 @@
     }
 }
 
- type Program = RawInstruction[];
+type Program = RawInstruction[];
 
- class Instruction {
+class Instruction {
     constructor(
         public op: Op,                     // Operation
         public dst: string,                // destination register (only REG)
         public pc: number,
 
         public vj: number = 0,   // First source operand value
-        public vk: number = 0,   // Seconds source operand value
-        public qj: string | null = null,   // RS name producing first operand
-        public qk: string | null = null    // RS name producing second operand
+            public vk: number = 0,   // Seconds source operand value
+            public qj: string | null = null,   // RS name producing first operand
+            public qk: string | null = null    // RS name producing second operand
     ){}
 
     kind(): FuKind {
@@ -50,3 +49,24 @@ OpString[Op.ADD] = "ADD";
 OpString[Op.SUB] = "SUB";
 OpString[Op.MUL] = "MUL";
 OpString[Op.DIV] = "DIV";
+
+let StringOp: {[index:string]: Op} = {}
+StringOp['ADD'] = Op.ADD;
+StringOp['SUB'] = Op.SUB;
+StringOp['MUL'] = Op.MUL;
+StringOp['DIV'] = Op.DIV;
+
+
+function parse(src: string): Program {
+    let prg:Program = [];
+    for (let row of src.split("\n")) {
+        let crow = row.trim();
+        if (!crow.length || crow.lastIndexOf(';', 0) === 0)     // is a comment
+            continue;
+        let rawcmd = crow.split(' ', 1)[0];
+        let cmd = rawcmd.trim().toUpperCase();
+        let args = crow.substring(rawcmd.length).replace(/\s+/g, '').split(',');
+        prg.push(new RawInstruction(StringOp[cmd], args[0], args[1], args[2]));
+    }
+    return prg;
+}
