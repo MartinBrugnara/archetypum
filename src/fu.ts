@@ -99,11 +99,9 @@ class Adder extends FunctionalUnitBaseClass {
     computeValue() {
         switch (this.instr!.op) {
             case Op.ADD:
-                console.log(this.name, "is add", this.instr!);
                 this.result = this.instr!.vj + this.instr!.vk;
                 break;
             case Op.SUB:
-                console.log(this.name, "is sub", this.instr!);
                 this.result = this.instr!.vj - this.instr!.vk;
                 break;
         }

@@ -15,12 +15,6 @@
     }
 
     step():boolean {
-        if (this.clock > 20) { // DEBUG, safety stop
-            console.error("Shiit 20 iteration?");
-            return false;
-        }
-
-
         this.CDB = new Queue<CdbMessage>();
         this.clock += 1;
 
@@ -159,11 +153,9 @@ class Adder extends FunctionalUnitBaseClass {
     computeValue() {
         switch (this.instr!.op) {
             case Op.ADD:
-                console.log(this.name, "is add", this.instr!);
                 this.result = this.instr!.vj + this.instr!.vk;
                 break;
             case Op.SUB:
-                console.log(this.name, "is sub", this.instr!);
                 this.result = this.instr!.vj - this.instr!.vk;
                 break;
         }
@@ -268,7 +260,10 @@ class Graphics {
     renderREG(): string {
         let html:string[][] = [];
         var body:string[][] = [];
-        html.push(['<thead><tr>']);
+        html.push(
+            ['<caption>Register Status (Q<sub>i</sub>)</caption>'],
+            ['<thead><tr>'],
+        );
         for (let key in this.emu.REG.regs) {
             html.push(['<th>', key, '</th>']);
             body.push([
@@ -295,8 +290,7 @@ class Graphics {
         return Array.prototype.concat.apply([], html).join('');
     }
 }
-
- class RawInstruction {
+class RawInstruction {
     public issued:number = -1;
     public executed:number = -1;
     public written:number = -1;
@@ -314,18 +308,18 @@ class Graphics {
     }
 }
 
- type Program = RawInstruction[];
+type Program = RawInstruction[];
 
- class Instruction {
+class Instruction {
     constructor(
         public op: Op,                     // Operation
         public dst: string,                // destination register (only REG)
         public pc: number,
 
         public vj: number = 0,   // First source operand value
-        public vk: number = 0,   // Seconds source operand value
-        public qj: string | null = null,   // RS name producing first operand
-        public qk: string | null = null    // RS name producing second operand
+            public vk: number = 0,   // Seconds source operand value
+            public qj: string | null = null,   // RS name producing first operand
+            public qk: string | null = null    // RS name producing second operand
     ){}
 
     kind(): FuKind {
@@ -347,6 +341,27 @@ OpString[Op.ADD] = "ADD";
 OpString[Op.SUB] = "SUB";
 OpString[Op.MUL] = "MUL";
 OpString[Op.DIV] = "DIV";
+
+let StringOp: {[index:string]: Op} = {}
+StringOp['ADD'] = Op.ADD;
+StringOp['SUB'] = Op.SUB;
+StringOp['MUL'] = Op.MUL;
+StringOp['DIV'] = Op.DIV;
+
+
+function parse(src: string): Program {
+    let prg:Program = [];
+    for (let row of src.split("\n")) {
+        let crow = row.trim();
+        if (!crow.length || crow.lastIndexOf(';', 0) === 0)     // is a comment
+            continue;
+        let rawcmd = crow.split(' ', 1)[0];
+        let cmd = rawcmd.trim().toUpperCase();
+        let args = crow.substring(rawcmd.length).replace(/\s+/g, '').split(',');
+        prg.push(new RawInstruction(StringOp[cmd], args[0], args[1], args[2]));
+    }
+    return prg;
+}
  class Queue<T> {
     _store: T[] = [];
 
@@ -421,50 +436,95 @@ OpString[Op.DIV] = "DIV";
         }
     }
 }
+// some spaghetti code from 2AM:w
+var ISSUE_EXEC_DELAY:boolean = true;
+var EXEC_WRITE_DELAY:boolean = true;
 
-// ---------------------------------------------------------------------------
-// TEST DATA
-// ---------------------------------------------------------------------------
+let ex_1_src = `ADD   3,5,R0
+SUB  R0,2,R0
+MUL  R0,1,R1
+DIV  R1,3,R3
+`
 
-let program = [
-    new RawInstruction(Op.ADD,  '3', '5', 'R0'),
-    new RawInstruction(Op.SUB, 'R0', '2', 'R0'),
-    new RawInstruction(Op.MUL, 'R0', '1', 'R1'),
-    new RawInstruction(Op.DIV, 'R1', '3', 'R3'),
-]
+let menu: HTMLElement = document.getElementById('menu')!;
+let ex_1: HTMLElement = document.getElementById('ex-1')!;
+let rdy: HTMLElement = document.getElementById('rdy')!;
+let raw_src: HTMLInputElement = <HTMLInputElement>document.getElementById('raw-src')!;
 
-// ---------------------------------------------------------------------------
-// Settings from GUI
-const ISSUE_EXEC_DELAY = true;
-const EXEC_WRITE_DELAY = true;
+let iaddr: HTMLInputElement = <HTMLInputElement>document.getElementById('iaddr')!;
+let imult: HTMLInputElement = <HTMLInputElement>document.getElementById('imult')!;
+let ireg: HTMLInputElement  = <HTMLInputElement>document.getElementById('ri')!;
+let freg: HTMLInputElement  = <HTMLInputElement>document.getElementById('rf')!;
+let ied: HTMLInputElement   = <HTMLInputElement>document.getElementById('ied')!;
+let ewd: HTMLInputElement   = <HTMLInputElement>document.getElementById('ewd')!;
 
-// ---------------------------------------------------------------------------
-// Testing main
+let rst: HTMLElement = document.getElementById('reset')!;
+let load: HTMLElement = document.getElementById('load')!;
+let play: HTMLElement = document.getElementById('play')!;
+let pausebtn: HTMLElement = document.getElementById('pause')!;
+let one_step: HTMLElement = document.getElementById('step')!;
+let speed: HTMLInputElement   = <HTMLInputElement>document.getElementById('speed')!;
 
-function sleep(s:number) {
-    return new Promise(x => setTimeout(x, s * 1000));
+function main():void {
+    ex_1.onclick = () => raw_src.value = ex_1_src;
+    rdy.onclick = setup;
+
+    rst.onclick = () => {
+        pause();
+        setup();
+    }
+
+    load.onclick = () => {
+        pause();
+        menu.classList.remove('hide')
+    }
+
+    play.onclick = playloop;
+    pausebtn.onclick = pause;
+    one_step.onclick = () => {
+        pause();
+        STEP()
+    };
 }
 
-async function main(){
-    console.log("In main");
-    let emu = new Emulator(
-        [[FuKind.ADDER, 'ADDR', 3], [FuKind.MULTIPLIER, 'MULT', 3] ],
-        {ints:8, floats:8},
-        program
-    )
+function playloop() {
+    if(STEP()) LOOP = setTimeout(playloop, (10/Number(speed.value) * 1000));
+}
 
-    let speed: HTMLInputElement = <HTMLInputElement>document.getElementById('speed')!;
+function pause() {
+    if (LOOP) clearTimeout(LOOP);
+}
+
+
+let safeInt = (s:string, fallback=0) => isNaN(parseInt(s, 10)) ? fallback : parseInt(s, 10);
+
+var STEP: () => boolean;
+var LOOP: number;
+
+function setup() {
+    ISSUE_EXEC_DELAY = ied.checked;
+    EXEC_WRITE_DELAY = ewd.checked;
+
+
+    let emu = new Emulator(
+        [
+            [FuKind.ADDER, 'ADDR', safeInt(iaddr.value, 3)],
+            [FuKind.MULTIPLIER, 'MULT', safeInt(imult.value, 3)]
+        ],
+        {ints: safeInt(ireg.value), floats: safeInt(freg.value)},
+        parse(raw_src.value)
+    )
 
     let g = new Graphics(emu);
     g.paint();
-    await sleep(10/Number(speed.value));
-    while(emu.step()) {
-        g.paint();
-        await sleep(10/Number(speed.value));
-    }
-    g.paint();
 
-    console.log("End of main");
+    STEP = ():boolean => {
+        var notEof = emu.step()
+        g.paint();
+        return notEof
+    }
+
+    menu.classList.add('hide');
 }
 
 main();

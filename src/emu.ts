@@ -12,12 +12,6 @@
     }
 
     step():boolean {
-        if (this.clock > 20) { // DEBUG, safety stop
-            console.error("Shiit 20 iteration?");
-            return false;
-        }
-
-
         this.CDB = new Queue<CdbMessage>();
         this.clock += 1;
 

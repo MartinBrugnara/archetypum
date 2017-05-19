@@ -14,3 +14,6 @@
 # --- Project ---
 dist/
 src/*.js
+
+
+.DS_Store

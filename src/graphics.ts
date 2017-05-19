@@ -64,7 +64,10 @@ class Graphics {
     renderREG(): string {
         let html:string[][] = [];
         var body:string[][] = [];
-        html.push(['<thead><tr>']);
+        html.push(
+            ['<caption>Register Status (Q<sub>i</sub>)</caption>'],
+            ['<thead><tr>'],
+        );
         for (let key in this.emu.REG.regs) {
             html.push(['<th>', key, '</th>']);
             body.push([

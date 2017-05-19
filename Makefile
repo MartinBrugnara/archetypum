@@ -5,7 +5,7 @@ SHELL=/bin/bash -O extglob
 build: dist clean 
 	cat ./src/!(main).ts ./src/main.ts > ./src/archetypum.ts
 	tsc -p tsconfig.json
-	cp ./src/index.html ./dist/
+	cp ./src/index.{html,css} ./dist/
 
 lint:
 	tslint --type-check --project ./src/
