@@ -9,7 +9,8 @@ interface FunctionalUnit {
 }
 
 enum FuKind {ADDER, MULTIPLIER, MEMORY}
-let FuMap: {[key:number]: (name:string) => FunctionalUnit} = {}
+type KwArgs = {[key:string]: any}
+let FuMap: {[key:number]: (name:string, kwargs: KwArgs) => FunctionalUnit} = {}
 
 class FunctionalUnitBaseClass implements FunctionalUnit {
     protected readonly duration: number;
@@ -17,7 +18,7 @@ class FunctionalUnitBaseClass implements FunctionalUnit {
     protected instr: Instruction | null = null;
 
     protected issuedTime: number = -1;
-    protected endTime: number;
+    protected endTime: number = -1;
 
     constructor(readonly kind: FuKind, readonly name: string) {}
 
@@ -91,8 +92,10 @@ class FunctionalUnitBaseClass implements FunctionalUnit {
 class Adder extends FunctionalUnitBaseClass {
     readonly duration = 2;
 
-    constructor(name: string) {
+    constructor(name: string, kwargs: KwArgs) {
         super(FuKind.ADDER, name);
+        if ('duration' in kwargs)
+            this.duration = kwargs.duration;
     }
 
     computeValue() {
@@ -106,13 +109,15 @@ class Adder extends FunctionalUnitBaseClass {
         }
     }
 }
-FuMap[FuKind.ADDER] = (name:string) => new Adder(name);
+FuMap[FuKind.ADDER] = (name:string, kwargs: KwArgs) => new Adder(name, kwargs);
 
 class Multiplier extends FunctionalUnitBaseClass {
     readonly duration = 4;
 
-    constructor(name: string) {
+    constructor(name: string, kwargs: KwArgs) {
         super(FuKind.MULTIPLIER, name);
+        if ('duration' in kwargs)
+            this.duration = kwargs.duration;
     }
 
     computeValue() {
@@ -126,15 +131,15 @@ class Multiplier extends FunctionalUnitBaseClass {
         }
     }
 }
-FuMap[FuKind.MULTIPLIER] = (name:string) => new Multiplier(name);
+FuMap[FuKind.MULTIPLIER] = (name:string, kwargs: KwArgs) => new Multiplier(name, kwargs);
 
 
-type FuConfig = [[FuKind, string, number]];
+type FuConfig = [[FuKind, string, number, KwArgs]];
 function FuFactory(conf: FuConfig): FunctionalUnit[] {
     let fus:FunctionalUnit[] = [];
     for (let fuc of conf) {
         for (let i=0; i<fuc[2]; i++) {
-            fus.push(FuMap[fuc[0]](`${fuc[1]}${i}`));
+            fus.push(FuMap[fuc[0]](`${fuc[1]}${i}`, <KwArgs>fuc[3]));
         }
     }
     return fus;
@@ -147,10 +152,9 @@ class MemoryMGM extends FunctionalUnitBaseClass {
     private cache: XCache;
     private isComputing: boolean=false;
 
-    constructor(name: string) {
+    constructor(name: string, kwargs: KwArgs) {
         super(FuKind.MEMORY, name);
-        // TODO: modify interface for varrags, and take memory as input
-        this.cache = new XCache(new Memory(1,2));
+        this.cache = <XCache>kwargs['cache'];
     }
 
     computeValue() {
@@ -159,12 +163,32 @@ class MemoryMGM extends FunctionalUnitBaseClass {
 
     /* Returns rowid (pc) when exec start, -1 otherwise */
     execute(clockTime: number): number {
-        if (this.isBusy() && this.isReady() && !this.isComputing &&
+        if (this.isBusy() && this.isReady() &&
             (clockTime >= (this.issuedTime + Number(ISSUE_EXEC_DELAY)))) {
 
-            this.isComputing = true;
-            this.endTime = clockTime + this.duration + Number(EXEC_WRITE_DELAY);
-            return this.instr!.pc
+            if (this.endTime >= clockTime)
+                return -1; // result already computed, waiting 2 write.
+
+            let done:boolean = false;
+            switch (this.instr!.op) {
+                case Op.LOAD:
+                    let value = this.cache.read(clockTime, this.instr!.vk + this.instr!.vj);
+                    if (value !== null) {
+                        this.result = value
+                        done = true;
+                    }
+                    break;
+                case Op.STORE:
+                    done = this.cache.write(clockTime, this.instr!.vk, this.instr!.vj);
+                    break;
+            }
+
+            if (done) this.endTime = clockTime + Number(EXEC_WRITE_DELAY);
+
+            if (!this.isComputing) {
+                this.isComputing = true;
+                return this.instr!.pc
+            }
         }
         return -1;
     }
@@ -173,41 +197,17 @@ class MemoryMGM extends FunctionalUnitBaseClass {
     /* NOTE: endTime is considered as minEndTime (account for delays).
      * We relay on cache output to compute the actual exec time. */
     writeResult(clockTime: number, cdb: Queue<CdbMessage>): number {
+        if (this.endTime !== clockTime) return -1;
 
-        console.log("wr1");
+        if (this.instr!.op === Op.LOAD)
+            cdb.push(new CdbMessage(this.name, this.result, this.instr!.dst));
 
-        if (!this.isBusy() || !this.isReady() || clockTime < this.endTime) {
-            return -1;
-        }
+        this.isComputing = false;
+        this.endTime = -1;
 
-        console.log("wr2");
-
-        let done:boolean = false;
-        switch (this.instr!.op) {
-            case Op.LOAD:
-                let value = this.cache.read(clockTime, this.instr!.vk + this.instr!.vj);
-                if (value !== null) {
-                    cdb.push(new CdbMessage(this.name, value, this.instr!.dst));
-                    done = true;
-                }
-                break;
-            case Op.STORE:
-                done = this.cache.write(clockTime, this.instr!.vk, this.instr!.vj);
-                break;
-        }
-
-        console.log("wr3");
-
-        if (done) {
-            let pc = this.instr!.pc;
-            this.instr = null;
-            this.isComputing = false;
-            console.log("wr4");
-            return pc;
-        }
-
-        console.log("wr5");
-        return -1;
+        let pc = this.instr!.pc;
+        this.instr = null;
+        return pc;
     }
 }
-FuMap[FuKind.MEMORY] = (name:string) => new MemoryMGM(name);
+FuMap[FuKind.MEMORY] = (name:string, kwargs: KwArgs) => new MemoryMGM(name, kwargs);

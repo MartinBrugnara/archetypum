@@ -9,6 +9,7 @@
 
         <div>
             <a href="#" id="reset">reset</a> |
+            <a href="#" id="conf">configure</a> |
             <a href="#" id="load">load program</a>
             <br>
             <br>
@@ -67,23 +68,10 @@
         </div>
 
 
-        <div id="menu">
+        <div id="menu-load" class="menu">
             <center>
-            <div id="menu-body">
+            <div class="menu-body">
                 <header>input your source || load an example</header>
-                <div id="opts">
-                    Conf:
-                    <span>#iaddr <input type="number" min="0" id="iaddr" value=3 size=2 max=99 /></span>
-                    <span>#imult <input type="number" min="0" id="imult" value=3 size=2 max=99 /></span>
-
-                    <span>#ireg <input type="number" min="0" id="ri" value=7 size=2 max=99 /></span>
-                    <span>#freg <input type="number" min="0" id="rf" value=0 size=2 max=99 /></span>
-
-                    <br>
-
-                    <span>issue-exec delay <input id="ied" type="checkbox" checked /></span>
-                    <span>exec-write delay <input id="ewd" type="checkbox" checked /></span>
-                </div>
                 <div id="examples">
                     Examples:
                         <a href="#" id="ex-1">1</a>,
@@ -92,6 +80,47 @@
                 <textarea class="tech" id="raw-src" autofocus></textarea>
                 <footer>
                     <a href="#" id="rdy">READY</a>
+                </footer>
+            </div>
+            </center>
+        </div>
+
+        <div id="menu-conf" class="menu">
+            <center>
+            <div class="menu-body">
+                <header>configure the emulator</header>
+                <div id="opts">
+                    Regs:<br>
+                    <span>#ireg <input type="number" min="0" id="ri" value=7 size=2 max=99 /></span>
+                    <span>#freg <input type="number" min="0" id="rf" value=0 size=2 max=99 /></span>
+                    <br><br>
+
+                    FUs:<br>
+                    Int Addr<span># <input type="number" min="0" id="iaddr" value=3 size=2 max=99 /></span>
+                    <span>duration <input type="number" min="0" id="iaddrd" value=2 size=2 max=99 /></span>
+                    <br>
+
+                    Int Mult<span># <input type="number" min="0" id="imult" value=3 size=2 max=99 /></span>
+                    <span>duration <input type="number" min="0" id="imultd" value=4 size=2 max=99 /></span>
+                    <br><br>
+
+                    Pipeline:<br>
+                    <span>issue-exec delay <input id="ied" type="checkbox" checked /></span>
+                    <span>exec-write delay <input id="ewd" type="checkbox" checked /></span>
+                    <br><br>
+
+                    Memory (in cycles):<br>
+                    <span>read latency <input type="number" min="0" id="rl" value=1 size=2 max=99 /></span>
+                    <span>write latency <input type="number" min="0" id="wl" value=1 size=2 max=99 /></span>
+                    <br><br>
+
+                    Cache:<br>
+                    <span>algorithm <select id="cache_alg"><option value="no-cache" selected>no cache</option></select></span>
+                    <br><br>
+
+                </div>
+                <footer>
+                    <a href="#" id="apply_conf">APPLY &amp; RESTART</a>
                 </footer>
             </div>
             </center>

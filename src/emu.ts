@@ -5,13 +5,14 @@
     REG:Register;
     FUs:FunctionalUnit[];
     CDB:Queue<CdbMessage>;
-    MEM:XCache;
 
-    constructor(fuConf: FuConfig, regConf: RegConfig, public readonly program:Program) {
+    constructor(
+            fuConf: FuConfig,
+            regConf: RegConfig,
+            public readonly program:Program
+    ) {
         this.REG = new Register(regConf);
         this.FUs = FuFactory(fuConf)
-        /* TODO: paramterize */
- //       this.MEM = new XCache(new Memory(1,2));
     }
 
     step():boolean {

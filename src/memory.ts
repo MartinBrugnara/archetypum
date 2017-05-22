@@ -1,25 +1,33 @@
+class MemConf {
+    constructor(
+        public readonly readLatency:number,
+        public readonly writeLatency:number,
+    ){}
+}
+
 class Memory {
     mem: {[index:number]: number} = {}
     currentOpComplete:number = -1;
 
-    constructor(private readLatency:number=0, private writeLatency:number=0) {}
+    private readLatency:number=0
+    private writeLatency:number=0
 
+    constructor(c: MemConf) {
+        this.readLatency = c.readLatency;
+        this.writeLatency = c.writeLatency;
+    }
 
     isBusy() {
         return this.currentOpComplete !== -1;
     }
 
     read(clock: number, loc:number): number | null {
-        console.log("in read");
         if (this.currentOpComplete === -1) {
-            console.log("set cop");
             this.currentOpComplete = clock + this.readLatency;
         } else if (clock >= this.currentOpComplete) {
             this.currentOpComplete = -1;
-            console.log("set cop done, ret val");
             return this._read(loc);
         }
-        console.log("retu null");
         return null
     }
 
@@ -48,14 +56,28 @@ class Memory {
     }
 }
 
+type CacheConf = {[key:string]: any}
+let XCacheMap: {[key:string]: (c: CacheConf) => XCache} = {}
+
+function XCacheFactory(name:string, c: CacheConf): XCache {
+    if (name in XCacheMap)
+        return XCacheMap[name](c);
+    else
+        return new XCache(c);
+}
+
 class XCache {
     /* Base cache implementation, a.k.a. ``no cache''.
      * Extend and override, read() and write() to implement the various
      * cache algorithms.
      */
-    private _cache: {[index:number]: number} = {}
+    private _cache: {[index:number]: number} = {};
+    private mem: Memory;
 
-    constructor(private mem: Memory) {}
+    constructor(c: CacheConf) {
+        if (c['mem'] !== undefined)
+            this.mem = <Memory>c.mem;
+    }
 
     read(clock: number, loc:number): number | null {
         return this.mem.read(clock, loc);
@@ -65,3 +87,4 @@ class XCache {
         return this.mem.write(clock, loc, value);
     }
 }
+XCacheMap["no-cache"] = (c: CacheConf) => new XCache(c);
