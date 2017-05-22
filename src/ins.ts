@@ -12,7 +12,9 @@ class RawInstruction {
     ){}
 
     toString(): string {
-        return `${OpString[this.op]} ${this.src0},${this.src1},${this.dst}`;
+        return `${OpString[this.op]} ${this.src0}` +
+            `${this.src1 ? ',' : ''}${this.src1}` +
+            `${this.dst  ? ',' : ''}${this.dst}`;
     }
 }
 
@@ -25,9 +27,9 @@ class Instruction {
         public pc: number,
 
         public vj: number = 0,   // First source operand value
-            public vk: number = 0,   // Seconds source operand value
-            public qj: string | null = null,   // RS name producing first operand
-            public qk: string | null = null    // RS name producing second operand
+        public vk: number = 0,   // Seconds source operand value
+        public qj: string | null = null,   // RS name producing first operand
+        public qk: string | null = null    // RS name producing second operand
     ){}
 
     kind(): FuKind {
@@ -36,25 +38,32 @@ class Instruction {
 }
 
 
-enum Op {ADD, SUB, MUL, DIV}
+enum Op {ADD, SUB, MUL, DIV, LOAD, STORE}
 
-let OpKindMap: {[index:number] : FuKind} = {}
+let OpKindMap: {[index:number]: FuKind} = {}
 OpKindMap[Op.ADD] = FuKind.ADDER;
 OpKindMap[Op.SUB] = FuKind.ADDER;
 OpKindMap[Op.MUL] = FuKind.MULTIPLIER;
 OpKindMap[Op.DIV] = FuKind.MULTIPLIER;
+OpKindMap[Op.LOAD] = FuKind.MEMORY;
+OpKindMap[Op.STORE] = FuKind.MEMORY;
+
 
 let OpString: {[index:number]: string} = {}
 OpString[Op.ADD] = "ADD";
 OpString[Op.SUB] = "SUB";
 OpString[Op.MUL] = "MUL";
 OpString[Op.DIV] = "DIV";
+OpString[Op.LOAD] = "LDR";
+OpString[Op.STORE] = "STR";
 
 let StringOp: {[index:string]: Op} = {}
 StringOp['ADD'] = Op.ADD;
 StringOp['SUB'] = Op.SUB;
 StringOp['MUL'] = Op.MUL;
 StringOp['DIV'] = Op.DIV;
+StringOp['LDR'] = Op.LOAD;
+StringOp['STR'] = Op.STORE;
 
 
 function parse(src: string): Program {
@@ -66,7 +75,9 @@ function parse(src: string): Program {
         let rawcmd = crow.split(' ', 1)[0];
         let cmd = rawcmd.trim().toUpperCase();
         let args = crow.substring(rawcmd.length).replace(/\s+/g, '').split(',');
-        prg.push(new RawInstruction(StringOp[cmd], args[0], args[1], args[2]));
+        prg.push(new RawInstruction(StringOp[cmd], args[0],
+                                    args.length > 1 ? args[1] : "",
+                                    args.length === 3 ? args[2] : ""));
     }
     return prg;
 }
