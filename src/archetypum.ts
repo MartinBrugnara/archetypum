@@ -8,10 +8,13 @@
     REG:Register;
     FUs:FunctionalUnit[];
     CDB:Queue<CdbMessage>;
+    MEM:XCache;
 
     constructor(fuConf: FuConfig, regConf: RegConfig, public readonly program:Program) {
         this.REG = new Register(regConf);
         this.FUs = FuFactory(fuConf)
+        /* TODO: paramterize */
+ //       this.MEM = new XCache(new Memory(1,2));
     }
 
     step():boolean {
@@ -52,7 +55,6 @@
         return this.pc < this.program.length;
     }
 }
-
 interface FunctionalUnit {
     readonly name:string;
     tryIssue(clockTime: number, instr: Instruction): boolean;
@@ -63,7 +65,7 @@ interface FunctionalUnit {
     getInstr(): Instruction | null;
 }
 
-enum FuKind {ADDER, MULTIPLIER}
+enum FuKind {ADDER, MULTIPLIER, MEMORY}
 let FuMap: {[key:number]: (name:string) => FunctionalUnit} = {}
 
 class FunctionalUnitBaseClass implements FunctionalUnit {
@@ -71,8 +73,8 @@ class FunctionalUnitBaseClass implements FunctionalUnit {
     protected result: number;
     protected instr: Instruction | null = null;
 
-    private issuedTime: number = -1;
-    private endTime: number;
+    protected issuedTime: number = -1;
+    protected endTime: number;
 
     constructor(readonly kind: FuKind, readonly name: string) {}
 
@@ -92,8 +94,8 @@ class FunctionalUnitBaseClass implements FunctionalUnit {
     execute(clockTime: number): number {
         if (
             this.isBusy() && this.isReady()
-            && (!this.endTime || this.endTime < clockTime)
-            && (clockTime >= (this.issuedTime + Number(ISSUE_EXEC_DELAY)))
+        && (!this.endTime || this.endTime < clockTime)
+        && (clockTime >= (this.issuedTime + Number(ISSUE_EXEC_DELAY)))
         ) {
             this.endTime = clockTime + this.duration + Number(EXEC_WRITE_DELAY);
             return this.instr!.pc
@@ -154,10 +156,10 @@ class Adder extends FunctionalUnitBaseClass {
         switch (this.instr!.op) {
             case Op.ADD:
                 this.result = this.instr!.vj + this.instr!.vk;
-                break;
+            break;
             case Op.SUB:
                 this.result = this.instr!.vj - this.instr!.vk;
-                break;
+            break;
         }
     }
 }
@@ -174,18 +176,18 @@ class Multiplier extends FunctionalUnitBaseClass {
         switch (this.instr!.op) {
             case Op.MUL:
                 this.result = this.instr!.vj * this.instr!.vk;
-                break;
+            break;
             case Op.DIV:
                 this.result = this.instr!.vj / this.instr!.vk;
-                break;
+            break;
         }
     }
 }
 FuMap[FuKind.MULTIPLIER] = (name:string) => new Multiplier(name);
 
 
- type FuConfig = [[FuKind, string, number]];
- function FuFactory(conf: FuConfig): FunctionalUnit[] {
+type FuConfig = [[FuKind, string, number]];
+function FuFactory(conf: FuConfig): FunctionalUnit[] {
     let fus:FunctionalUnit[] = [];
     for (let fuc of conf) {
         for (let i=0; i<fuc[2]; i++) {
@@ -194,6 +196,78 @@ FuMap[FuKind.MULTIPLIER] = (name:string) => new Multiplier(name);
     }
     return fus;
 }
+
+
+
+class MemoryMGM extends FunctionalUnitBaseClass {
+    readonly duration = 0;
+    private cache: XCache;
+    private isComputing: boolean=false;
+
+    constructor(name: string) {
+        super(FuKind.MEMORY, name);
+        // TODO: modify interface for varrags, and take memory as input
+        this.cache = new XCache(new Memory(1,2));
+    }
+
+    computeValue() {
+        console.error('I should never be invoked');
+    }
+
+    /* Returns rowid (pc) when exec start, -1 otherwise */
+    execute(clockTime: number): number {
+        if (this.isBusy() && this.isReady() && !this.isComputing &&
+            (clockTime >= (this.issuedTime + Number(ISSUE_EXEC_DELAY)))) {
+
+            this.isComputing = true;
+            this.endTime = clockTime + this.duration + Number(EXEC_WRITE_DELAY);
+            return this.instr!.pc
+        }
+        return -1;
+    }
+
+    /* Return rowid (pc) when it writes a result, -1 otherwise. */
+    /* NOTE: endTime is considered as minEndTime (account for delays).
+     * We relay on cache output to compute the actual exec time. */
+    writeResult(clockTime: number, cdb: Queue<CdbMessage>): number {
+
+        console.log("wr1");
+
+        if (!this.isBusy() || !this.isReady() || clockTime < this.endTime) {
+            return -1;
+        }
+
+        console.log("wr2");
+
+        let done:boolean = false;
+        switch (this.instr!.op) {
+            case Op.LOAD:
+                let value = this.cache.read(clockTime, this.instr!.vk + this.instr!.vj);
+                if (value !== null) {
+                    cdb.push(new CdbMessage(this.name, value, this.instr!.dst));
+                    done = true;
+                }
+                break;
+            case Op.STORE:
+                done = this.cache.write(clockTime, this.instr!.vk, this.instr!.vj);
+                break;
+        }
+
+        console.log("wr3");
+
+        if (done) {
+            let pc = this.instr!.pc;
+            this.instr = null;
+            this.isComputing = false;
+            console.log("wr4");
+            return pc;
+        }
+
+        console.log("wr5");
+        return -1;
+    }
+}
+FuMap[FuKind.MEMORY] = (name:string) => new MemoryMGM(name);
 class Graphics {
 
     clk: HTMLElement = document.getElementById('clock')!;
@@ -304,7 +378,9 @@ class RawInstruction {
     ){}
 
     toString(): string {
-        return `${OpString[this.op]} ${this.src0},${this.src1},${this.dst}`;
+        return `${OpString[this.op]} ${this.src0}` +
+            `${this.src1 ? ',' : ''}${this.src1}` +
+            `${this.dst  ? ',' : ''}${this.dst}`;
     }
 }
 
@@ -317,9 +393,9 @@ class Instruction {
         public pc: number,
 
         public vj: number = 0,   // First source operand value
-            public vk: number = 0,   // Seconds source operand value
-            public qj: string | null = null,   // RS name producing first operand
-            public qk: string | null = null    // RS name producing second operand
+        public vk: number = 0,   // Seconds source operand value
+        public qj: string | null = null,   // RS name producing first operand
+        public qk: string | null = null    // RS name producing second operand
     ){}
 
     kind(): FuKind {
@@ -328,25 +404,32 @@ class Instruction {
 }
 
 
-enum Op {ADD, SUB, MUL, DIV}
+enum Op {ADD, SUB, MUL, DIV, LOAD, STORE}
 
-let OpKindMap: {[index:number] : FuKind} = {}
+let OpKindMap: {[index:number]: FuKind} = {}
 OpKindMap[Op.ADD] = FuKind.ADDER;
 OpKindMap[Op.SUB] = FuKind.ADDER;
 OpKindMap[Op.MUL] = FuKind.MULTIPLIER;
 OpKindMap[Op.DIV] = FuKind.MULTIPLIER;
+OpKindMap[Op.LOAD] = FuKind.MEMORY;
+OpKindMap[Op.STORE] = FuKind.MEMORY;
+
 
 let OpString: {[index:number]: string} = {}
 OpString[Op.ADD] = "ADD";
 OpString[Op.SUB] = "SUB";
 OpString[Op.MUL] = "MUL";
 OpString[Op.DIV] = "DIV";
+OpString[Op.LOAD] = "LDR";
+OpString[Op.STORE] = "STR";
 
 let StringOp: {[index:string]: Op} = {}
 StringOp['ADD'] = Op.ADD;
 StringOp['SUB'] = Op.SUB;
 StringOp['MUL'] = Op.MUL;
 StringOp['DIV'] = Op.DIV;
+StringOp['LDR'] = Op.LOAD;
+StringOp['STR'] = Op.STORE;
 
 
 function parse(src: string): Program {
@@ -358,9 +441,78 @@ function parse(src: string): Program {
         let rawcmd = crow.split(' ', 1)[0];
         let cmd = rawcmd.trim().toUpperCase();
         let args = crow.substring(rawcmd.length).replace(/\s+/g, '').split(',');
-        prg.push(new RawInstruction(StringOp[cmd], args[0], args[1], args[2]));
+        prg.push(new RawInstruction(StringOp[cmd], args[0],
+                                    args.length > 1 ? args[1] : "",
+                                    args.length === 3 ? args[2] : ""));
     }
     return prg;
+}
+class Memory {
+    mem: {[index:number]: number} = {}
+    currentOpComplete:number = -1;
+
+    constructor(private readLatency:number=0, private writeLatency:number=0) {}
+
+
+    isBusy() {
+        return this.currentOpComplete !== -1;
+    }
+
+    read(clock: number, loc:number): number | null {
+        console.log("in read");
+        if (this.currentOpComplete === -1) {
+            console.log("set cop");
+            this.currentOpComplete = clock + this.readLatency;
+        } else if (clock >= this.currentOpComplete) {
+            this.currentOpComplete = -1;
+            console.log("set cop done, ret val");
+            return this._read(loc);
+        }
+        console.log("retu null");
+        return null
+    }
+
+    // return if the op has completed
+    write(clock: number, loc:number, value:number): boolean {
+        if (this.currentOpComplete === -1) {
+            this.currentOpComplete = clock + this.writeLatency;
+        } else if (clock === this.currentOpComplete) {
+            this.currentOpComplete = -1;
+            this._write(loc, value);
+            return true;
+        }
+        return false;
+    }
+
+
+    _read(loc:number): number {
+        if (this.mem[loc] === undefined) {
+            this.mem[loc] = Math.round(Math.random() * 100);
+        }
+        return this.mem[loc];
+    }
+
+    _write(loc:number, value:number): void {
+        this.mem[loc] = value;
+    }
+}
+
+class XCache {
+    /* Base cache implementation, a.k.a. ``no cache''.
+     * Extend and override, read() and write() to implement the various
+     * cache algorithms.
+     */
+    private _cache: {[index:number]: number} = {}
+
+    constructor(private mem: Memory) {}
+
+    read(clock: number, loc:number): number | null {
+        return this.mem.read(clock, loc);
+    }
+
+    write(clock: number, loc:number, value:number): boolean {
+        return this.mem.write(clock, loc, value);
+    }
 }
  class Queue<T> {
     _store: T[] = [];
@@ -407,22 +559,26 @@ function parse(src: string): Program {
         }
         ins.vj = value;
 
-        value = parseInt(ri.src1, 10);
-        if (isNaN(value)) {                        // then src1 is a reg name
-            if (this.qi[ri.src1] === null) {
-                value = this.regs[ri.src1];
-            } else {
-                value = 0;
-                ins.qk = this.qi[ri.src1];
+        if (ri.src1.length !== 0) {
+            value = parseInt(ri.src1, 10);
+            if (isNaN(value)) {                        // then src1 is a reg name
+                if (this.qi[ri.src1] === null) {
+                    value = this.regs[ri.src1];
+                } else {
+                    value = 0;
+                    ins.qk = this.qi[ri.src1];
+                }
             }
+            ins.vk = value;
         }
-        ins.vk = value;
 
 
         return ins
     }
 
     setProducer(inst: Instruction, rs: string) {
+        if (this.regs[inst.dst] === undefined)
+            return;
         this.regs[inst.dst] = 0;
         this.qi[inst.dst] = rs;
     }
@@ -445,9 +601,15 @@ SUB  R0,2,R0
 MUL  R0,1,R1
 DIV  R1,3,R3
 `
+let ex_2_src = `ADD   3,5,R0
+STR  42,R0
+LDR  R0,0,R1
+ADD  1,R1,R2
+`
 
 let menu: HTMLElement = document.getElementById('menu')!;
 let ex_1: HTMLElement = document.getElementById('ex-1')!;
+let ex_2: HTMLElement = document.getElementById('ex-2')!;
 let rdy: HTMLElement = document.getElementById('rdy')!;
 let raw_src: HTMLInputElement = <HTMLInputElement>document.getElementById('raw-src')!;
 
@@ -467,6 +629,7 @@ let speed: HTMLInputElement   = <HTMLInputElement>document.getElementById('speed
 
 function main():void {
     ex_1.onclick = () => raw_src.value = ex_1_src;
+    ex_2.onclick = () => raw_src.value = ex_2_src;
     rdy.onclick = setup;
 
     rst.onclick = () => {
@@ -509,7 +672,8 @@ function setup() {
     let emu = new Emulator(
         [
             [FuKind.ADDER, 'ADDR', safeInt(iaddr.value, 3)],
-            [FuKind.MULTIPLIER, 'MULT', safeInt(imult.value, 3)]
+            [FuKind.MULTIPLIER, 'MULT', safeInt(imult.value, 3)],
+            [FuKind.MEMORY, 'MEM', 2],
         ],
         {ints: safeInt(ireg.value), floats: safeInt(freg.value)},
         parse(raw_src.value)

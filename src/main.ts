@@ -7,9 +7,15 @@ SUB  R0,2,R0
 MUL  R0,1,R1
 DIV  R1,3,R3
 `
+let ex_2_src = `ADD   3,5,R0
+STR  42,R0
+LDR  R0,0,R1
+ADD  1,R1,R2
+`
 
 let menu: HTMLElement = document.getElementById('menu')!;
 let ex_1: HTMLElement = document.getElementById('ex-1')!;
+let ex_2: HTMLElement = document.getElementById('ex-2')!;
 let rdy: HTMLElement = document.getElementById('rdy')!;
 let raw_src: HTMLInputElement = <HTMLInputElement>document.getElementById('raw-src')!;
 
@@ -29,6 +35,7 @@ let speed: HTMLInputElement   = <HTMLInputElement>document.getElementById('speed
 
 function main():void {
     ex_1.onclick = () => raw_src.value = ex_1_src;
+    ex_2.onclick = () => raw_src.value = ex_2_src;
     rdy.onclick = setup;
 
     rst.onclick = () => {
@@ -71,7 +78,8 @@ function setup() {
     let emu = new Emulator(
         [
             [FuKind.ADDER, 'ADDR', safeInt(iaddr.value, 3)],
-            [FuKind.MULTIPLIER, 'MULT', safeInt(imult.value, 3)]
+            [FuKind.MULTIPLIER, 'MULT', safeInt(imult.value, 3)],
+            [FuKind.MEMORY, 'MEM', 2],
         ],
         {ints: safeInt(ireg.value), floats: safeInt(freg.value)},
         parse(raw_src.value)

@@ -29,22 +29,26 @@
         }
         ins.vj = value;
 
-        value = parseInt(ri.src1, 10);
-        if (isNaN(value)) {                        // then src1 is a reg name
-            if (this.qi[ri.src1] === null) {
-                value = this.regs[ri.src1];
-            } else {
-                value = 0;
-                ins.qk = this.qi[ri.src1];
+        if (ri.src1.length !== 0) {
+            value = parseInt(ri.src1, 10);
+            if (isNaN(value)) {                        // then src1 is a reg name
+                if (this.qi[ri.src1] === null) {
+                    value = this.regs[ri.src1];
+                } else {
+                    value = 0;
+                    ins.qk = this.qi[ri.src1];
+                }
             }
+            ins.vk = value;
         }
-        ins.vk = value;
 
 
         return ins
     }
 
     setProducer(inst: Instruction, rs: string) {
+        if (this.regs[inst.dst] === undefined)
+            return;
         this.regs[inst.dst] = 0;
         this.qi[inst.dst] = rs;
     }
