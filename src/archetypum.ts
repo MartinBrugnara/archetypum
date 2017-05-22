@@ -8,13 +8,14 @@
     REG:Register;
     FUs:FunctionalUnit[];
     CDB:Queue<CdbMessage>;
-    MEM:XCache;
 
-    constructor(fuConf: FuConfig, regConf: RegConfig, public readonly program:Program) {
+    constructor(
+            fuConf: FuConfig,
+            regConf: RegConfig,
+            public readonly program:Program
+    ) {
         this.REG = new Register(regConf);
         this.FUs = FuFactory(fuConf)
-        /* TODO: paramterize */
- //       this.MEM = new XCache(new Memory(1,2));
     }
 
     step():boolean {
@@ -66,7 +67,8 @@ interface FunctionalUnit {
 }
 
 enum FuKind {ADDER, MULTIPLIER, MEMORY}
-let FuMap: {[key:number]: (name:string) => FunctionalUnit} = {}
+type KwArgs = {[key:string]: any}
+let FuMap: {[key:number]: (name:string, kwargs: KwArgs) => FunctionalUnit} = {}
 
 class FunctionalUnitBaseClass implements FunctionalUnit {
     protected readonly duration: number;
@@ -74,7 +76,7 @@ class FunctionalUnitBaseClass implements FunctionalUnit {
     protected instr: Instruction | null = null;
 
     protected issuedTime: number = -1;
-    protected endTime: number;
+    protected endTime: number = -1;
 
     constructor(readonly kind: FuKind, readonly name: string) {}
 
@@ -148,8 +150,10 @@ class FunctionalUnitBaseClass implements FunctionalUnit {
 class Adder extends FunctionalUnitBaseClass {
     readonly duration = 2;
 
-    constructor(name: string) {
+    constructor(name: string, kwargs: KwArgs) {
         super(FuKind.ADDER, name);
+        if ('duration' in kwargs)
+            this.duration = kwargs.duration;
     }
 
     computeValue() {
@@ -163,13 +167,15 @@ class Adder extends FunctionalUnitBaseClass {
         }
     }
 }
-FuMap[FuKind.ADDER] = (name:string) => new Adder(name);
+FuMap[FuKind.ADDER] = (name:string, kwargs: KwArgs) => new Adder(name, kwargs);
 
 class Multiplier extends FunctionalUnitBaseClass {
     readonly duration = 4;
 
-    constructor(name: string) {
+    constructor(name: string, kwargs: KwArgs) {
         super(FuKind.MULTIPLIER, name);
+        if ('duration' in kwargs)
+            this.duration = kwargs.duration;
     }
 
     computeValue() {
@@ -183,15 +189,15 @@ class Multiplier extends FunctionalUnitBaseClass {
         }
     }
 }
-FuMap[FuKind.MULTIPLIER] = (name:string) => new Multiplier(name);
+FuMap[FuKind.MULTIPLIER] = (name:string, kwargs: KwArgs) => new Multiplier(name, kwargs);
 
 
-type FuConfig = [[FuKind, string, number]];
+type FuConfig = [[FuKind, string, number, KwArgs]];
 function FuFactory(conf: FuConfig): FunctionalUnit[] {
     let fus:FunctionalUnit[] = [];
     for (let fuc of conf) {
         for (let i=0; i<fuc[2]; i++) {
-            fus.push(FuMap[fuc[0]](`${fuc[1]}${i}`));
+            fus.push(FuMap[fuc[0]](`${fuc[1]}${i}`, <KwArgs>fuc[3]));
         }
     }
     return fus;
@@ -204,10 +210,9 @@ class MemoryMGM extends FunctionalUnitBaseClass {
     private cache: XCache;
     private isComputing: boolean=false;
 
-    constructor(name: string) {
+    constructor(name: string, kwargs: KwArgs) {
         super(FuKind.MEMORY, name);
-        // TODO: modify interface for varrags, and take memory as input
-        this.cache = new XCache(new Memory(1,2));
+        this.cache = <XCache>kwargs['cache'];
     }
 
     computeValue() {
@@ -216,12 +221,32 @@ class MemoryMGM extends FunctionalUnitBaseClass {
 
     /* Returns rowid (pc) when exec start, -1 otherwise */
     execute(clockTime: number): number {
-        if (this.isBusy() && this.isReady() && !this.isComputing &&
+        if (this.isBusy() && this.isReady() &&
             (clockTime >= (this.issuedTime + Number(ISSUE_EXEC_DELAY)))) {
 
-            this.isComputing = true;
-            this.endTime = clockTime + this.duration + Number(EXEC_WRITE_DELAY);
-            return this.instr!.pc
+            if (this.endTime >= clockTime)
+                return -1; // result already computed, waiting 2 write.
+
+            let done:boolean = false;
+            switch (this.instr!.op) {
+                case Op.LOAD:
+                    let value = this.cache.read(clockTime, this.instr!.vk + this.instr!.vj);
+                    if (value !== null) {
+                        this.result = value
+                        done = true;
+                    }
+                    break;
+                case Op.STORE:
+                    done = this.cache.write(clockTime, this.instr!.vk, this.instr!.vj);
+                    break;
+            }
+
+            if (done) this.endTime = clockTime + Number(EXEC_WRITE_DELAY);
+
+            if (!this.isComputing) {
+                this.isComputing = true;
+                return this.instr!.pc
+            }
         }
         return -1;
     }
@@ -230,44 +255,20 @@ class MemoryMGM extends FunctionalUnitBaseClass {
     /* NOTE: endTime is considered as minEndTime (account for delays).
      * We relay on cache output to compute the actual exec time. */
     writeResult(clockTime: number, cdb: Queue<CdbMessage>): number {
+        if (this.endTime !== clockTime) return -1;
 
-        console.log("wr1");
+        if (this.instr!.op === Op.LOAD)
+            cdb.push(new CdbMessage(this.name, this.result, this.instr!.dst));
 
-        if (!this.isBusy() || !this.isReady() || clockTime < this.endTime) {
-            return -1;
-        }
+        this.isComputing = false;
+        this.endTime = -1;
 
-        console.log("wr2");
-
-        let done:boolean = false;
-        switch (this.instr!.op) {
-            case Op.LOAD:
-                let value = this.cache.read(clockTime, this.instr!.vk + this.instr!.vj);
-                if (value !== null) {
-                    cdb.push(new CdbMessage(this.name, value, this.instr!.dst));
-                    done = true;
-                }
-                break;
-            case Op.STORE:
-                done = this.cache.write(clockTime, this.instr!.vk, this.instr!.vj);
-                break;
-        }
-
-        console.log("wr3");
-
-        if (done) {
-            let pc = this.instr!.pc;
-            this.instr = null;
-            this.isComputing = false;
-            console.log("wr4");
-            return pc;
-        }
-
-        console.log("wr5");
-        return -1;
+        let pc = this.instr!.pc;
+        this.instr = null;
+        return pc;
     }
 }
-FuMap[FuKind.MEMORY] = (name:string) => new MemoryMGM(name);
+FuMap[FuKind.MEMORY] = (name:string, kwargs: KwArgs) => new MemoryMGM(name, kwargs);
 class Graphics {
 
     clk: HTMLElement = document.getElementById('clock')!;
@@ -447,28 +448,36 @@ function parse(src: string): Program {
     }
     return prg;
 }
+class MemConf {
+    constructor(
+        public readonly readLatency:number,
+        public readonly writeLatency:number,
+    ){}
+}
+
 class Memory {
     mem: {[index:number]: number} = {}
     currentOpComplete:number = -1;
 
-    constructor(private readLatency:number=0, private writeLatency:number=0) {}
+    private readLatency:number=0
+    private writeLatency:number=0
 
+    constructor(c: MemConf) {
+        this.readLatency = c.readLatency;
+        this.writeLatency = c.writeLatency;
+    }
 
     isBusy() {
         return this.currentOpComplete !== -1;
     }
 
     read(clock: number, loc:number): number | null {
-        console.log("in read");
         if (this.currentOpComplete === -1) {
-            console.log("set cop");
             this.currentOpComplete = clock + this.readLatency;
         } else if (clock >= this.currentOpComplete) {
             this.currentOpComplete = -1;
-            console.log("set cop done, ret val");
             return this._read(loc);
         }
-        console.log("retu null");
         return null
     }
 
@@ -497,14 +506,28 @@ class Memory {
     }
 }
 
+type CacheConf = {[key:string]: any}
+let XCacheMap: {[key:string]: (c: CacheConf) => XCache} = {}
+
+function XCacheFactory(name:string, c: CacheConf): XCache {
+    if (name in XCacheMap)
+        return XCacheMap[name](c);
+    else
+        return new XCache(c);
+}
+
 class XCache {
     /* Base cache implementation, a.k.a. ``no cache''.
      * Extend and override, read() and write() to implement the various
      * cache algorithms.
      */
-    private _cache: {[index:number]: number} = {}
+    private _cache: {[index:number]: number} = {};
+    private mem: Memory;
 
-    constructor(private mem: Memory) {}
+    constructor(c: CacheConf) {
+        if (c['mem'] !== undefined)
+            this.mem = <Memory>c.mem;
+    }
 
     read(clock: number, loc:number): number | null {
         return this.mem.read(clock, loc);
@@ -514,6 +537,7 @@ class XCache {
         return this.mem.write(clock, loc, value);
     }
 }
+XCacheMap["no-cache"] = (c: CacheConf) => new XCache(c);
  class Queue<T> {
     _store: T[] = [];
 
@@ -607,20 +631,29 @@ LDR  R0,0,R1
 ADD  1,R1,R2
 `
 
-let menu: HTMLElement = document.getElementById('menu')!;
+let menu_load: HTMLElement = document.getElementById('menu-load')!;
+let menu_conf: HTMLElement = document.getElementById('menu-conf')!;
 let ex_1: HTMLElement = document.getElementById('ex-1')!;
 let ex_2: HTMLElement = document.getElementById('ex-2')!;
 let rdy: HTMLElement = document.getElementById('rdy')!;
+let apply_conf: HTMLElement = document.getElementById('apply_conf')!;
 let raw_src: HTMLInputElement = <HTMLInputElement>document.getElementById('raw-src')!;
 
 let iaddr: HTMLInputElement = <HTMLInputElement>document.getElementById('iaddr')!;
+let iaddrd: HTMLInputElement = <HTMLInputElement>document.getElementById('iaddrd')!;
 let imult: HTMLInputElement = <HTMLInputElement>document.getElementById('imult')!;
+let imultd: HTMLInputElement = <HTMLInputElement>document.getElementById('imultd')!;
 let ireg: HTMLInputElement  = <HTMLInputElement>document.getElementById('ri')!;
 let freg: HTMLInputElement  = <HTMLInputElement>document.getElementById('rf')!;
 let ied: HTMLInputElement   = <HTMLInputElement>document.getElementById('ied')!;
 let ewd: HTMLInputElement   = <HTMLInputElement>document.getElementById('ewd')!;
+let rl: HTMLInputElement   = <HTMLInputElement>document.getElementById('rl')!;
+let wl: HTMLInputElement   = <HTMLInputElement>document.getElementById('wl')!;
+let ca: HTMLSelectElement   = <HTMLSelectElement>document.getElementById('cache_alg')!;
+
 
 let rst: HTMLElement = document.getElementById('reset')!;
+let conf: HTMLElement = document.getElementById('conf')!;
 let load: HTMLElement = document.getElementById('load')!;
 let play: HTMLElement = document.getElementById('play')!;
 let pausebtn: HTMLElement = document.getElementById('pause')!;
@@ -630,7 +663,17 @@ let speed: HTMLInputElement   = <HTMLInputElement>document.getElementById('speed
 function main():void {
     ex_1.onclick = () => raw_src.value = ex_1_src;
     ex_2.onclick = () => raw_src.value = ex_2_src;
-    rdy.onclick = setup;
+
+    rdy.onclick = () => {
+        setup();
+        menu_load.classList.add('hide');
+    }
+
+    apply_conf.onclick = () => {
+        pause();
+        setup();
+        menu_conf.classList.add('hide');
+    }
 
     rst.onclick = () => {
         pause();
@@ -639,7 +682,12 @@ function main():void {
 
     load.onclick = () => {
         pause();
-        menu.classList.remove('hide')
+        menu_load.classList.remove('hide')
+    }
+
+    conf.onclick = () => {
+        pause();
+        menu_conf.classList.remove('hide')
     }
 
     play.onclick = playloop;
@@ -668,12 +716,15 @@ function setup() {
     ISSUE_EXEC_DELAY = ied.checked;
     EXEC_WRITE_DELAY = ewd.checked;
 
+    let MEM:Memory = new Memory(new MemConf(safeInt(rl.value,1), safeInt(wl.value,2)));
+    let ca_val = (<HTMLOptionElement>ca.options[ca.selectedIndex]).value;
+    let CACHE:XCache = XCacheFactory(ca_val, {'mem': MEM});
 
     let emu = new Emulator(
         [
-            [FuKind.ADDER, 'ADDR', safeInt(iaddr.value, 3)],
-            [FuKind.MULTIPLIER, 'MULT', safeInt(imult.value, 3)],
-            [FuKind.MEMORY, 'MEM', 2],
+            [FuKind.ADDER, 'ADDR', safeInt(iaddr.value, 3), {duration: safeInt(iaddrd.value, 2)}],
+            [FuKind.MULTIPLIER, 'MULT', safeInt(imult.value, 3), {duration: safeInt(imultd.value, 4)}],
+            [FuKind.MEMORY, 'MEM', 1, {cache: CACHE}],
         ],
         {ints: safeInt(ireg.value), floats: safeInt(freg.value)},
         parse(raw_src.value)
@@ -687,8 +738,6 @@ function setup() {
         g.paint();
         return notEof
     }
-
-    menu.classList.add('hide');
 }
 
 main();

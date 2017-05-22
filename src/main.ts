@@ -13,20 +13,29 @@ LDR  R0,0,R1
 ADD  1,R1,R2
 `
 
-let menu: HTMLElement = document.getElementById('menu')!;
+let menu_load: HTMLElement = document.getElementById('menu-load')!;
+let menu_conf: HTMLElement = document.getElementById('menu-conf')!;
 let ex_1: HTMLElement = document.getElementById('ex-1')!;
 let ex_2: HTMLElement = document.getElementById('ex-2')!;
 let rdy: HTMLElement = document.getElementById('rdy')!;
+let apply_conf: HTMLElement = document.getElementById('apply_conf')!;
 let raw_src: HTMLInputElement = <HTMLInputElement>document.getElementById('raw-src')!;
 
 let iaddr: HTMLInputElement = <HTMLInputElement>document.getElementById('iaddr')!;
+let iaddrd: HTMLInputElement = <HTMLInputElement>document.getElementById('iaddrd')!;
 let imult: HTMLInputElement = <HTMLInputElement>document.getElementById('imult')!;
+let imultd: HTMLInputElement = <HTMLInputElement>document.getElementById('imultd')!;
 let ireg: HTMLInputElement  = <HTMLInputElement>document.getElementById('ri')!;
 let freg: HTMLInputElement  = <HTMLInputElement>document.getElementById('rf')!;
 let ied: HTMLInputElement   = <HTMLInputElement>document.getElementById('ied')!;
 let ewd: HTMLInputElement   = <HTMLInputElement>document.getElementById('ewd')!;
+let rl: HTMLInputElement   = <HTMLInputElement>document.getElementById('rl')!;
+let wl: HTMLInputElement   = <HTMLInputElement>document.getElementById('wl')!;
+let ca: HTMLSelectElement   = <HTMLSelectElement>document.getElementById('cache_alg')!;
+
 
 let rst: HTMLElement = document.getElementById('reset')!;
+let conf: HTMLElement = document.getElementById('conf')!;
 let load: HTMLElement = document.getElementById('load')!;
 let play: HTMLElement = document.getElementById('play')!;
 let pausebtn: HTMLElement = document.getElementById('pause')!;
@@ -36,7 +45,17 @@ let speed: HTMLInputElement   = <HTMLInputElement>document.getElementById('speed
 function main():void {
     ex_1.onclick = () => raw_src.value = ex_1_src;
     ex_2.onclick = () => raw_src.value = ex_2_src;
-    rdy.onclick = setup;
+
+    rdy.onclick = () => {
+        setup();
+        menu_load.classList.add('hide');
+    }
+
+    apply_conf.onclick = () => {
+        pause();
+        setup();
+        menu_conf.classList.add('hide');
+    }
 
     rst.onclick = () => {
         pause();
@@ -45,7 +64,12 @@ function main():void {
 
     load.onclick = () => {
         pause();
-        menu.classList.remove('hide')
+        menu_load.classList.remove('hide')
+    }
+
+    conf.onclick = () => {
+        pause();
+        menu_conf.classList.remove('hide')
     }
 
     play.onclick = playloop;
@@ -74,12 +98,15 @@ function setup() {
     ISSUE_EXEC_DELAY = ied.checked;
     EXEC_WRITE_DELAY = ewd.checked;
 
+    let MEM:Memory = new Memory(new MemConf(safeInt(rl.value,1), safeInt(wl.value,2)));
+    let ca_val = (<HTMLOptionElement>ca.options[ca.selectedIndex]).value;
+    let CACHE:XCache = XCacheFactory(ca_val, {'mem': MEM});
 
     let emu = new Emulator(
         [
-            [FuKind.ADDER, 'ADDR', safeInt(iaddr.value, 3)],
-            [FuKind.MULTIPLIER, 'MULT', safeInt(imult.value, 3)],
-            [FuKind.MEMORY, 'MEM', 2],
+            [FuKind.ADDER, 'ADDR', safeInt(iaddr.value, 3), {duration: safeInt(iaddrd.value, 2)}],
+            [FuKind.MULTIPLIER, 'MULT', safeInt(imult.value, 3), {duration: safeInt(imultd.value, 4)}],
+            [FuKind.MEMORY, 'MEM', 1, {cache: CACHE}],
         ],
         {ints: safeInt(ireg.value), floats: safeInt(freg.value)},
         parse(raw_src.value)
@@ -93,8 +120,6 @@ function setup() {
         g.paint();
         return notEof
     }
-
-    menu.classList.add('hide');
 }
 
 main();
