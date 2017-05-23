@@ -4,6 +4,7 @@ class Graphics {
     src: HTMLElement = document.getElementById('sourcecode')!;
     rs: HTMLElement = document.getElementById('rs')!;
     reg: HTMLElement = document.getElementById('reg')!;
+    cache: HTMLElement = document.getElementById('cache')!;
 
     constructor(private emu: Emulator) {}
 
@@ -12,6 +13,7 @@ class Graphics {
         this.src.innerHTML = this.renderSrc();
         this.rs.innerHTML = this.renderRS();
         this.reg.innerHTML = this.renderREG();
+        this.cache.innerHTML = this.renderCache();
     }
 
     renderSrc(): string {
@@ -91,6 +93,26 @@ class Graphics {
             ['</tr></tbody>'],
         );
         if (!body.length) html.splice(-4, 4);
+        return Array.prototype.concat.apply([], html).join('');
+    }
+
+    renderCache(): string {
+        let html:string[][] = [];
+        html.push(['<caption>Cache</caption><thead><tr><th></th>']);
+        for(let j=0; j<this.emu.cache.n;j++) html.push(['<th>', String(j), '</th>']);
+        html.push(['</tr></thead>']);
+
+        html.push(['<tbody>']);
+        for(let i=0; i<this.emu.cache.size / this.emu.cache.n;i++) {
+            html.push(['<tr><td>', String(i), '</td>']);
+            for(let j=0; j<this.emu.cache.n;j++) {
+                let entry = this.emu.cache._cache[i][j];
+                html.push(['<td>',entry.join(','), '</td>']);
+            }
+            html.push(['</tr>']);
+        }
+        html.push(['</tbody>']);
+
         return Array.prototype.concat.apply([], html).join('');
     }
 }

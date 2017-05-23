@@ -32,7 +32,10 @@ let ewd: HTMLInputElement   = <HTMLInputElement>document.getElementById('ewd')!;
 let rl: HTMLInputElement   = <HTMLInputElement>document.getElementById('rl')!;
 let wl: HTMLInputElement   = <HTMLInputElement>document.getElementById('wl')!;
 let ca: HTMLSelectElement   = <HTMLSelectElement>document.getElementById('cache_alg')!;
-
+let crl: HTMLInputElement   = <HTMLInputElement>document.getElementById('crl')!;
+let cwl: HTMLInputElement   = <HTMLInputElement>document.getElementById('cwl')!;
+let nways: HTMLInputElement   = <HTMLInputElement>document.getElementById('nways')!;
+let csize: HTMLInputElement   = <HTMLInputElement>document.getElementById('csize')!;
 
 let rst: HTMLElement = document.getElementById('reset')!;
 let conf: HTMLElement = document.getElementById('conf')!;
@@ -100,7 +103,14 @@ function setup() {
 
     let MEM:Memory = new Memory(new MemConf(safeInt(rl.value,1), safeInt(wl.value,2)));
     let ca_val = (<HTMLOptionElement>ca.options[ca.selectedIndex]).value;
-    let CACHE:XCache = XCacheFactory(ca_val, {'mem': MEM});
+    let CACHE:XCache = XCacheFactory(ca_val.split('_')[0], {
+        'mem': MEM,
+        'n': safeInt(nways.value, 2),
+        'size': safeInt(csize.value, 4),
+        'readLatency': safeInt(crl.value, 0),
+        'writeLatency': safeInt(cwl.value, 0),
+        'iswriteback' : ca_val.split('_')[1] === 'wb',
+    });
 
     let emu = new Emulator(
         [
@@ -109,7 +119,8 @@ function setup() {
             [FuKind.MEMORY, 'MEM', 1, {cache: CACHE}],
         ],
         {ints: safeInt(ireg.value), floats: safeInt(freg.value)},
-        parse(raw_src.value)
+        CACHE,
+        parse(raw_src.value),
     )
 
     let g = new Graphics(emu);

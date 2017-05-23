@@ -67,6 +67,11 @@
             </table>
         </div>
 
+        <div>
+            <table id="cache">
+            </table>
+        </div>
+
 
         <div id="menu-load" class="menu">
             <center>
@@ -115,7 +120,17 @@
                     <br><br>
 
                     Cache:<br>
-                    <span>algorithm <select id="cache_alg"><option value="no-cache" selected>no cache</option></select></span>
+                    <span>algorithm <select id="cache_alg">
+                            <option value="no-cache" selected>no cache</option>
+                            <option value="nwayset_wb">n-way w.back</option>
+                            <option value="nwayset_wt">n-way w.through</option>
+                    </select></span><br>
+                    <span>N <input type="number" min="0" id="nways" value=2 size=2 max=99 /></span>
+                    <span>size <input type="number" min="0" id="csize" value=4 size=2 max=99 /></span>
+                    <br>
+                    <span>read latency <input type="number" min="0" id="crl" value=0 size=2 max=99 /></span>
+                    <span>write latency <input type="number" min="0" id="cwl" value=0 size=2 max=99 /></span>
+
                     <br><br>
 
                 </div>
@@ -125,6 +140,7 @@
             </div>
             </center>
         </div>
+
 
         <script src="archetypum.js"></script>
     </body>
