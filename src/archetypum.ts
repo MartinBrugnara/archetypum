@@ -369,8 +369,15 @@ class Graphics {
     }
 
     renderCache(): string {
+        if (this.emu.cache.size === 0) return "";
+
         let html:string[][] = [];
-        html.push(['<caption>Cache</caption><thead><tr><th></th>']);
+        html.push([
+            '<caption>cache | hit&nbsp;',
+            String(Math.round(this.emu.cache.readHit / (this.emu.cache.readHit + this.emu.cache.readMiss) * 100)),
+            '% - evictions ', String(this.emu.cache.evictions),
+            '</caption><thead><tr><th></th>'
+        ]);
         for(let j=0; j<this.emu.cache.n;j++) html.push(['<th>', String(j), '</th>']);
         html.push(['</tr></thead>']);
 
@@ -538,7 +545,6 @@ function XCacheFactory(name:string, c: CacheConf): XCache {
     else
         return new XCache(c);
 }
-
 // (in_use, index, value, dirty)
 type XCacheEntry = [boolean, number, number, boolean];
 
@@ -550,6 +556,10 @@ class XCache {
     public _cache: {[index:number]: XCacheEntry[]} = {};
     public n: number;
     public size: number;
+
+    public readMiss: number = 0;
+    public readHit: number = 0;
+    public evictions: number = 0;
 
     protected mem: Memory;
 
@@ -639,8 +649,10 @@ class NWayCache extends XCache {
         let j = Math.floor(Math.random() * this.n);
         let entry = this._cache[i][j];
         this._cache[i][j] = [true, loc, value, dirty];
-        if (entry[3] === true)
+        if (entry[3] === true) {
+            this.evictions++;
             return entry;
+        }
         return null;
     }
 
@@ -655,8 +667,10 @@ class NWayCache extends XCache {
             let value = this.findValue(loc);
             if (value !== null) { // cache hit
                 this.currentOpComplete = -1;
+                this.readHit++;
                 return value;
             } else {
+                this.readMiss++;
                 this.miss = true;
             }
         }
