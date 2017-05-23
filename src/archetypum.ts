@@ -12,6 +12,7 @@
     constructor(
             fuConf: FuConfig,
             regConf: RegConfig,
+            public cache:XCache,
             public readonly program:Program
     ) {
         this.REG = new Register(regConf);
@@ -275,6 +276,7 @@ class Graphics {
     src: HTMLElement = document.getElementById('sourcecode')!;
     rs: HTMLElement = document.getElementById('rs')!;
     reg: HTMLElement = document.getElementById('reg')!;
+    cache: HTMLElement = document.getElementById('cache')!;
 
     constructor(private emu: Emulator) {}
 
@@ -283,6 +285,7 @@ class Graphics {
         this.src.innerHTML = this.renderSrc();
         this.rs.innerHTML = this.renderRS();
         this.reg.innerHTML = this.renderREG();
+        this.cache.innerHTML = this.renderCache();
     }
 
     renderSrc(): string {
@@ -362,6 +365,26 @@ class Graphics {
             ['</tr></tbody>'],
         );
         if (!body.length) html.splice(-4, 4);
+        return Array.prototype.concat.apply([], html).join('');
+    }
+
+    renderCache(): string {
+        let html:string[][] = [];
+        html.push(['<caption>Cache</caption><thead><tr><th></th>']);
+        for(let j=0; j<this.emu.cache.n;j++) html.push(['<th>', String(j), '</th>']);
+        html.push(['</tr></thead>']);
+
+        html.push(['<tbody>']);
+        for(let i=0; i<this.emu.cache.size / this.emu.cache.n;i++) {
+            html.push(['<tr><td>', String(i), '</td>']);
+            for(let j=0; j<this.emu.cache.n;j++) {
+                let entry = this.emu.cache._cache[i][j];
+                html.push(['<td>',entry.join(','), '</td>']);
+            }
+            html.push(['</tr>']);
+        }
+        html.push(['</tbody>']);
+
         return Array.prototype.concat.apply([], html).join('');
     }
 }
@@ -496,7 +519,7 @@ class Memory {
 
     _read(loc:number): number {
         if (this.mem[loc] === undefined) {
-            this.mem[loc] = Math.round(Math.random() * 100);
+            this.mem[loc] = Math.floor(Math.random() * 100);
         }
         return this.mem[loc];
     }
@@ -516,13 +539,19 @@ function XCacheFactory(name:string, c: CacheConf): XCache {
         return new XCache(c);
 }
 
+// (in_use, index, value, dirty)
+type XCacheEntry = [boolean, number, number, boolean];
+
 class XCache {
     /* Base cache implementation, a.k.a. ``no cache''.
      * Extend and override, read() and write() to implement the various
      * cache algorithms.
      */
-    private _cache: {[index:number]: number} = {};
-    private mem: Memory;
+    public _cache: {[index:number]: XCacheEntry[]} = {};
+    public n: number;
+    public size: number;
+
+    protected mem: Memory;
 
     constructor(c: CacheConf) {
         if (c['mem'] !== undefined)
@@ -538,6 +567,164 @@ class XCache {
     }
 }
 XCacheMap["no-cache"] = (c: CacheConf) => new XCache(c);
+
+
+class NWayCache extends XCache {
+    private isWriteBack: boolean ; // if false, write through
+
+    private readLatency: number;
+    private writeLatency: number;
+
+    private currentOpComplete:number = -1;
+    private miss = false;
+    private writing: XCacheEntry | null = null;
+
+    private result: number | null;
+
+    constructor(c: CacheConf) {
+        super(c);
+        this.n =  'n' in c ? c['n'] : 2;
+        this.size = 'size' in c ? c['size'] : 4;
+        this.isWriteBack = 'iswriteback' in c ? c['iswriteback'] : false;
+        this.readLatency = 'readLatency' in c ? c['readLatency'] : 0;
+        this.writeLatency = 'writeLatency' in c ? c['readLatency'] : 0;
+
+        if (this.size % this.n !== 0)
+            throw new Error("Invalid (N,Size) paraemters combination");
+
+        for (let i=0; i<this.size/this.n; i++) {
+            this._cache[i] = [];
+            for (let j=0; j<this.n; j++)
+                this._cache[i].push( [false, 0, 0, false] );
+        }
+    }
+
+    isBusy() {
+        return this.currentOpComplete !== -1;
+    }
+
+    findValue(loc:number): number | null {
+        let i = loc % this.n;
+        for (let j=0; j<this.n; j++) {
+            let entry = this._cache[i][j]
+            if (entry[0] && entry[1] === loc) {
+                return entry[2]
+            }
+        }
+        return null;
+    }
+
+    setValue(loc:number, value:number, dirty:boolean=false): XCacheEntry | null {
+        let i = loc % this.n;
+
+        // Try replace
+        for (let j=0; j<this.n; j++) {
+            let entry = this._cache[i][j]
+            if (entry[0] && entry[1] === loc) {
+                this._cache[i][j] = [true, loc, value, dirty];
+                return null;
+            }
+        }
+
+        // Try find empty
+        for (let j=0; j<this.n; j++) {
+            let entry = this._cache[i][j]
+            if (!entry[0]) {
+                this._cache[i][j] = [true, loc, value, dirty];
+                return null;
+            }
+        }
+
+        // Evict: random cache eviction protocol
+        let j = Math.floor(Math.random() * this.n);
+        let entry = this._cache[i][j];
+        this._cache[i][j] = [true, loc, value, dirty];
+        if (entry[3] === true)
+            return entry;
+        return null;
+    }
+
+
+    read(clock: number, loc:number): number | null {
+        /* look if in local cache */
+        if (this.currentOpComplete === -1) {
+            this.currentOpComplete = clock + this.readLatency;
+        }
+
+        if (clock === this.currentOpComplete)  {
+            let value = this.findValue(loc);
+            if (value !== null) { // cache hit
+                this.currentOpComplete = -1;
+                return value;
+            } else {
+                this.miss = true;
+            }
+        }
+
+        if (this.miss) {
+            let value = this.mem.read(clock, loc);
+
+            if (value !== null) {
+                this.miss = false;
+
+                let evicted = this.setValue(loc, value); // update cache
+                if (evicted !== null && this.isWriteBack) {
+                    this.result = value;
+                    this.writing = evicted;
+                } else {
+                    this.currentOpComplete = -1;
+                    return value;
+                }
+            }
+        }
+
+        if (this.writing !== null) {
+            if (this.mem.write(clock, this.writing[1], this.writing[2])) {
+                let retval = this.result;
+                this.result = null;
+                this.writing = null;
+                this.currentOpComplete = -1;
+                return retval;
+            }
+        }
+
+        return null;
+    }
+
+    write(clock: number, loc:number, value:number): boolean {
+        /* look if in local cache */
+        if (this.currentOpComplete === -1)
+            this.currentOpComplete = clock + this.writeLatency;
+
+        if (clock < this.currentOpComplete) return false;
+
+        if (clock === this.currentOpComplete)  {
+            let evicted = this.setValue(loc, value, true);
+
+            if (evicted !== null && this.isWriteBack) {
+                this.writing = evicted;
+            }
+
+            if (!this.isWriteBack) { // writethrough
+                this.writing = [true, loc, value, true];
+            }
+        }
+
+        if (this.writing !== null) {
+            if (this.mem.write(clock, this.writing[1], this.writing[2])) {
+                this.writing = null;
+            }
+        }
+
+        if (this.writing === null) {
+            this.currentOpComplete = -1;
+            return true;
+        } else {
+            return false;
+        }
+    }
+}
+XCacheMap["nwayset"] = (c: CacheConf) => new NWayCache(c);
  class Queue<T> {
     _store: T[] = [];
 
@@ -650,7 +837,10 @@ let ewd: HTMLInputElement   = <HTMLInputElement>document.getElementById('ewd')!;
 let rl: HTMLInputElement   = <HTMLInputElement>document.getElementById('rl')!;
 let wl: HTMLInputElement   = <HTMLInputElement>document.getElementById('wl')!;
 let ca: HTMLSelectElement   = <HTMLSelectElement>document.getElementById('cache_alg')!;
-
+let crl: HTMLInputElement   = <HTMLInputElement>document.getElementById('crl')!;
+let cwl: HTMLInputElement   = <HTMLInputElement>document.getElementById('cwl')!;
+let nways: HTMLInputElement   = <HTMLInputElement>document.getElementById('nways')!;
+let csize: HTMLInputElement   = <HTMLInputElement>document.getElementById('csize')!;
 
 let rst: HTMLElement = document.getElementById('reset')!;
 let conf: HTMLElement = document.getElementById('conf')!;
@@ -718,7 +908,14 @@ function setup() {
 
     let MEM:Memory = new Memory(new MemConf(safeInt(rl.value,1), safeInt(wl.value,2)));
     let ca_val = (<HTMLOptionElement>ca.options[ca.selectedIndex]).value;
-    let CACHE:XCache = XCacheFactory(ca_val, {'mem': MEM});
+    let CACHE:XCache = XCacheFactory(ca_val.split('_')[0], {
+        'mem': MEM,
+        'n': safeInt(nways.value, 2),
+        'size': safeInt(csize.value, 4),
+        'readLatency': safeInt(crl.value, 0),
+        'writeLatency': safeInt(cwl.value, 0),
+        'iswriteback' : ca_val.split('_')[1] === 'wb',
+    });
 
     let emu = new Emulator(
         [
@@ -727,7 +924,8 @@ function setup() {
             [FuKind.MEMORY, 'MEM', 1, {cache: CACHE}],
         ],
         {ints: safeInt(ireg.value), floats: safeInt(freg.value)},
-        parse(raw_src.value)
+        CACHE,
+        parse(raw_src.value),
     )
 
     let g = new Graphics(emu);

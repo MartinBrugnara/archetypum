@@ -9,6 +9,7 @@
     constructor(
             fuConf: FuConfig,
             regConf: RegConfig,
+            public cache:XCache,
             public readonly program:Program
     ) {
         this.REG = new Register(regConf);
