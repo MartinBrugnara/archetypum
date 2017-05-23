@@ -97,8 +97,15 @@ class Graphics {
     }
 
     renderCache(): string {
+        if (this.emu.cache.size === 0) return "";
+
         let html:string[][] = [];
-        html.push(['<caption>Cache</caption><thead><tr><th></th>']);
+        html.push([
+            '<caption>cache | hit&nbsp;',
+            String(Math.round(this.emu.cache.readHit / (this.emu.cache.readHit + this.emu.cache.readMiss) * 100)),
+            '% - evictions ', String(this.emu.cache.evictions),
+            '</caption><thead><tr><th></th>'
+        ]);
         for(let j=0; j<this.emu.cache.n;j++) html.push(['<th>', String(j), '</th>']);
         html.push(['</tr></thead>']);
 
