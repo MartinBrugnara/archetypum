@@ -35,6 +35,7 @@
                         <th>Issue</th>
                         <th>Exec</th>
                         <th>Write</th>
+                        <th>Commit</th>
                     </tr>
                 </thead>
                 <tbody class="tech" id="sourcecode">
@@ -55,12 +56,19 @@
                         <th>V<sub>k</sub></th>
                         <th>Q<sub>j</sub></th>
                         <th>Q<sub>k</sub></th>
+                        <th>tag</th>
                     </tr>
                 </thead>
                 <tbody class="tech" id="rs">
                 </tbody>
             </table>
         </div>
+
+        <div>
+            <table id="rob">
+            </table>
+        </div>
+
 
         <div>
             <table id="reg">
@@ -71,6 +79,7 @@
             <table id="cache">
             </table>
         </div>
+
 
 
         <div id="menu-load" class="menu">
@@ -132,6 +141,9 @@
                     <span>write latency <input type="number" min="0" id="cwl" value=0 size=2 max=99 /></span>
 
                     <br><br>
+
+                    Reorder Buffer (ROB):<br>
+                    <span>size <input type="number" min="0" id="rsize" value=5 size=2 max=99 /> - <small>0: disable</small></span>
 
                 </div>
                 <footer>

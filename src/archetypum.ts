@@ -91,7 +91,7 @@ class CircularBuffer<T> {
 
             let issued:boolean = false;
             if (!this.useRob || !this.ROB.isFull()) {
-                inst.tag = this.ROB.nextTag();
+                if (this.useRob) inst.tag = this.ROB.nextTag();
                 for (let fu of this.FUs) {             // find free FU
                     if (fu.tryIssue(this.clock, inst)) {
                         this.program[this.pc].issued = this.clock;
@@ -129,7 +129,7 @@ class CircularBuffer<T> {
 
         // if all fu are not busy end
         for (let fu of this.FUs) if (fu.isBusy()) return true;
-        return this.pc < this.program.length && this.ROB.isEmpty();
+        return this.pc < this.program.length && (!this.useRob || this.ROB.isEmpty());
     }
 }
 interface FunctionalUnit {
@@ -352,6 +352,7 @@ class Graphics {
     rs: HTMLElement = document.getElementById('rs')!;
     reg: HTMLElement = document.getElementById('reg')!;
     cache: HTMLElement = document.getElementById('cache')!;
+    rob: HTMLElement = document.getElementById('rob')!;
 
     constructor(private emu: Emulator) {}
 
@@ -361,6 +362,7 @@ class Graphics {
         this.rs.innerHTML = this.renderRS();
         this.reg.innerHTML = this.renderREG();
         this.cache.innerHTML = this.renderCache();
+        this.rob.innerHTML = this.renderRob();
     }
 
     renderSrc(): string {
@@ -380,6 +382,8 @@ class Graphics {
                         String(i.executed >= 0 ? i.executed : ''), '</td>',
                     '<td', (i.written === this.emu.clock ? ' class="new-val"': '') ,'>',
                         String(i.written >= 0 ? i.written : ''), '</td>',
+                    '<td', (i.committed === this.emu.clock ? ' class="new-val"': '') ,'>',
+                        String(i.committed >= 0 ? i.committed : ''), '</td>',
                 '</tr>',
             ]);
         }
@@ -401,8 +405,9 @@ class Graphics {
                     '<td>', (instr.qk === null ? String(instr.vk) : ''), '</td>',
                     '<td>', (instr.qj !== null ? instr.qj : ''), '</td>',
                     '<td>', (instr.qk !== null ? instr.qk : '') , '</td>',
+                    '<td>', (instr.tag !== null ? instr.tag : '') , '</td>',
                 ] : [
-                    '<td></td><td></td><td></td><td></td><td></td>',
+                    '<td></td><td></td><td></td><td></td><td></td><td></td>',
                 ]),
                 ['</tr>'],
             );
@@ -467,6 +472,38 @@ class Graphics {
         }
         html.push(['</tbody>']);
 
+        return Array.prototype.concat.apply([], html).join('');
+    }
+
+    renderRob(): string {
+        if (!this.emu.useRob) return '';
+
+        let html:string[][] = [];
+        html.push(['<caption>reorder buffer</caption><thead><tr><th>tag</th><th>Instruction</th><th>dst</th><th>value</th><th>ready</th><th>rowid</th></tr></thead><tbody>']);
+
+        for (let row of this.emu.ROB.cb) {
+            html.push([
+                '<tr>',
+                '<td>', String(row[0]), '</td>',
+                '<td>', String(row[1].instr), '</td>',
+                '<td>', row[1].dst, '</td>',
+                '<td>', String(row[1].value), '</td>',
+                '<td', row[1].ready ? ' class="busy">' : '>', '</td>',
+                '<td>',String(row[1].instr.rowid), '</td>',
+                '</tr>',
+            ]);
+        }
+
+        for (let i=0; i<this.emu.ROB.cb.buffer.length - this.emu.ROB.cb.availableData; i++) {
+            let tag = (this.emu.ROB.cb.tail + i) % this.emu.ROB.cb.buffer.length;
+            html.push([
+                '<tr><td>',
+                String(tag),
+                '</td><td></td><td></td><td></td><td></td><td></td></tr>',
+            ])
+        }
+
+        html.push(['</tbody>']);
         return Array.prototype.concat.apply([], html).join('');
     }
 }
@@ -1004,6 +1041,7 @@ let crl: HTMLInputElement   = <HTMLInputElement>document.getElementById('crl')!;
 let cwl: HTMLInputElement   = <HTMLInputElement>document.getElementById('cwl')!;
 let nways: HTMLInputElement   = <HTMLInputElement>document.getElementById('nways')!;
 let csize: HTMLInputElement   = <HTMLInputElement>document.getElementById('csize')!;
+let rsize: HTMLInputElement   = <HTMLInputElement>document.getElementById('rsize')!;
 
 let rst: HTMLElement = document.getElementById('reset')!;
 let conf: HTMLElement = document.getElementById('conf')!;
@@ -1087,7 +1125,7 @@ function setup() {
             [FuKind.MEMORY, 'MEM', 1, {cache: CACHE}],
         ],
         {ints: safeInt(ireg.value), floats: safeInt(freg.value)},
-        0, // TODO: gui ROB SIZE
+        safeInt(rsize.value, 0),
         CACHE,
         parse(raw_src.value),
     )

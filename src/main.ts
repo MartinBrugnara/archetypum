@@ -36,6 +36,7 @@ let crl: HTMLInputElement   = <HTMLInputElement>document.getElementById('crl')!;
 let cwl: HTMLInputElement   = <HTMLInputElement>document.getElementById('cwl')!;
 let nways: HTMLInputElement   = <HTMLInputElement>document.getElementById('nways')!;
 let csize: HTMLInputElement   = <HTMLInputElement>document.getElementById('csize')!;
+let rsize: HTMLInputElement   = <HTMLInputElement>document.getElementById('rsize')!;
 
 let rst: HTMLElement = document.getElementById('reset')!;
 let conf: HTMLElement = document.getElementById('conf')!;
@@ -119,7 +120,7 @@ function setup() {
             [FuKind.MEMORY, 'MEM', 1, {cache: CACHE}],
         ],
         {ints: safeInt(ireg.value), floats: safeInt(freg.value)},
-        0, // TODO: gui ROB SIZE
+        safeInt(rsize.value, 0),
         CACHE,
         parse(raw_src.value),
     )

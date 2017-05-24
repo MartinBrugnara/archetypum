@@ -34,7 +34,7 @@
 
             let issued:boolean = false;
             if (!this.useRob || !this.ROB.isFull()) {
-                inst.tag = this.ROB.nextTag();
+                if (this.useRob) inst.tag = this.ROB.nextTag();
                 for (let fu of this.FUs) {             // find free FU
                     if (fu.tryIssue(this.clock, inst)) {
                         this.program[this.pc].issued = this.clock;
@@ -72,6 +72,6 @@
 
         // if all fu are not busy end
         for (let fu of this.FUs) if (fu.isBusy()) return true;
-        return this.pc < this.program.length && this.ROB.isEmpty();
+        return this.pc < this.program.length && (!this.useRob || this.ROB.isEmpty());
     }
 }
