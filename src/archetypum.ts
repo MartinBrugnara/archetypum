@@ -118,18 +118,19 @@ class CircularBuffer<T> {
             if (rowid >= 0) this.program[rowid].written = this.clock;
         }
 
-        // ROB: rob.readCDB(this.CDB);
-        // ROB: rob.commit() & handle spec
-
-        // TODO: add opt for yield (4 graphics)
-        // ROB: comment out
         for (let fu of this.FUs) fu.readCDB(this.CDB);
-        this.REG.readCDB(this.CDB);
+        if (this.useRob) {
+            this.ROB.readCDB(this.CDB);
+            // TODO: expose info for graphics
+            this.ROB.commit(this.REG);
+            // SPEC: handle here PC & flush()
+        } else {
+            this.REG.readCDB(this.CDB);
+        }
 
         // if all fu are not busy end
         for (let fu of this.FUs) if (fu.isBusy()) return true;
-        // ROB: && rob.isEmpty();
-        return this.pc < this.program.length;
+        return this.pc < this.program.length && this.ROB.isEmpty();
     }
 }
 interface FunctionalUnit {
@@ -189,7 +190,7 @@ class FunctionalUnitBaseClass implements FunctionalUnit {
     writeResult(clockTime: number, cdb: Queue<CdbMessage>): number {
         if (this.isBusy && this.endTime === clockTime) {
             this.computeValue();
-            cdb.push(new CdbMessage(this.name, this.result, this.instr!.dst));
+            cdb.push(new CdbMessage(this.instr!.tag || this.name, this.result, this.instr!.dst));
             let pc = this.instr!.pc;
             this.instr = null;
             return pc;
@@ -334,7 +335,7 @@ class MemoryMGM extends FunctionalUnitBaseClass {
         if (this.endTime !== clockTime) return -1;
 
         if (this.instr!.op === Op.LOAD)
-            cdb.push(new CdbMessage(this.name, this.result, this.instr!.dst));
+            cdb.push(new CdbMessage(this.instr!.tag || this.name, this.result, this.instr!.dst));
 
         this.isComputing = false;
         this.endTime = -1;
@@ -907,20 +908,21 @@ type Patcher = (reg: Register, src: string) => [number, string | null];
     }
 }
 class Rob {
-    buffer:CircularBuffer<RobEntry>;
+    cb:CircularBuffer<RobEntry>;
 
     constructor(size: number) {
-        this.buffer = new CircularBuffer<RobEntry>(size)
+        this.cb = new CircularBuffer<RobEntry>(size)
     }
 
-    isFull = ():boolean => this.buffer.isFull();
-    nextTag = ():string => String(this.buffer.nextTag());
-    push = (r:RobEntry):number => this.buffer.push(r);
-    pop = ():RobEntry|null => this.buffer.pop();
+    isFull = ():boolean => this.cb.isFull();
+    isEmpty = ():boolean => this.cb.isEmpty();
+    nextTag = ():string => String(this.cb.nextTag());
+    push = (r:RobEntry):number => this.cb.push(r);
+    pop = ():RobEntry|null => this.cb.pop();
 
     patcher = function(me: Rob) {
         return function(registry: Register, reg: string): [number, string | null] {
-            for (let item of me.buffer.reverse()) {
+            for (let item of me.cb.reverse()) {
                 let tag = item[0], entry = item[1];
                 if (reg === entry.dst) {
                     if (entry.ready) {
@@ -934,6 +936,17 @@ class Rob {
         }
     }(this);
 
+    readCDB(cdb: Queue<CdbMessage>): void {
+        for (let msg of cdb) {
+            let tag = Number(msg.rsName);
+            this.cb.buffer[tag].value = msg.result;
+            this.cb.buffer[tag].ready = true;
+        }
+    }
+
+    commit(reg: Register): void {
+        // TODO: implement me
+    }
 }
 
 class RobEntry {

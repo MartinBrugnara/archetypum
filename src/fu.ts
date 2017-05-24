@@ -55,7 +55,7 @@ class FunctionalUnitBaseClass implements FunctionalUnit {
     writeResult(clockTime: number, cdb: Queue<CdbMessage>): number {
         if (this.isBusy && this.endTime === clockTime) {
             this.computeValue();
-            cdb.push(new CdbMessage(this.name, this.result, this.instr!.dst));
+            cdb.push(new CdbMessage(this.instr!.tag || this.name, this.result, this.instr!.dst));
             let pc = this.instr!.pc;
             this.instr = null;
             return pc;
@@ -200,7 +200,7 @@ class MemoryMGM extends FunctionalUnitBaseClass {
         if (this.endTime !== clockTime) return -1;
 
         if (this.instr!.op === Op.LOAD)
-            cdb.push(new CdbMessage(this.name, this.result, this.instr!.dst));
+            cdb.push(new CdbMessage(this.instr!.tag || this.name, this.result, this.instr!.dst));
 
         this.isComputing = false;
         this.endTime = -1;

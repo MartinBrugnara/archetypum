@@ -61,17 +61,18 @@
             if (rowid >= 0) this.program[rowid].written = this.clock;
         }
 
-        // ROB: rob.readCDB(this.CDB);
-        // ROB: rob.commit() & handle spec
-
-        // TODO: add opt for yield (4 graphics)
-        // ROB: comment out
         for (let fu of this.FUs) fu.readCDB(this.CDB);
-        this.REG.readCDB(this.CDB);
+        if (this.useRob) {
+            this.ROB.readCDB(this.CDB);
+            // TODO: expose info for graphics
+            this.ROB.commit(this.REG);
+            // SPEC: handle here PC & flush()
+        } else {
+            this.REG.readCDB(this.CDB);
+        }
 
         // if all fu are not busy end
         for (let fu of this.FUs) if (fu.isBusy()) return true;
-        // ROB: && rob.isEmpty();
-        return this.pc < this.program.length;
+        return this.pc < this.program.length && this.ROB.isEmpty();
     }
 }
