@@ -2,13 +2,15 @@ class RawInstruction {
     public issued:number = -1;
     public executed:number = -1;
     public written:number = -1;
+    public committed:number = -1;
 
 
     constructor(
         public op: Op,
         public src0: string,
         public src1: string,
-        public dst: string
+        public dst: string,
+        public rowid:number
     ){}
 
     toString(): string {
@@ -70,6 +72,7 @@ StringOp['STR'] = Op.STORE;
 
 function parse(src: string): Program {
     let prg:Program = [];
+    let rowid:number = 0;
     for (let row of src.split("\n")) {
         let crow = row.trim();
         if (!crow.length || crow.lastIndexOf(';', 0) === 0)     // is a comment
@@ -79,7 +82,8 @@ function parse(src: string): Program {
         let args = crow.substring(rawcmd.length).replace(/\s+/g, '').split(',');
         prg.push(new RawInstruction(StringOp[cmd], args[0],
                                     args.length > 1 ? args[1] : "",
-                                    args.length === 3 ? args[2] : ""));
+                                    args.length === 3 ? args[2] : "",
+                                    rowid++));
     }
     return prg;
 }

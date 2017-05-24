@@ -35,8 +35,14 @@ class Rob {
         }
     }
 
-    commit(reg: Register): void {
-        // TODO: implement me
+    // return pc of committed instruction or -1
+    commit(reg: Register): number {
+        if (!this.isEmpty() && this.cb.buffer[this.cb.head].ready) {
+            let data = this.cb.pop()!;
+            reg.regs[data.dst] = data.value
+            return data.instr.rowid;
+        }
+        return -1;
     }
 }
 

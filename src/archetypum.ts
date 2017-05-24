@@ -87,8 +87,7 @@ class CircularBuffer<T> {
         if (this.pc < this.program.length) {       // If code then issue
             let rawInst = this.program[this.pc];
 
-            let inst = this.REG.patch(rawInst, this.pc,
-                this.useRob ? this.ROB.patcher : this.REG.patcher);
+            let inst = this.REG.patch(rawInst, this.useRob ? this.ROB.patcher : this.REG.patcher);
 
             let issued:boolean = false;
             if (!this.useRob || !this.ROB.isFull()) {
@@ -121,8 +120,8 @@ class CircularBuffer<T> {
         for (let fu of this.FUs) fu.readCDB(this.CDB);
         if (this.useRob) {
             this.ROB.readCDB(this.CDB);
-            // TODO: expose info for graphics
-            this.ROB.commit(this.REG);
+            let rowid = this.ROB.commit(this.REG);
+            if (rowid !== -1) this.program[rowid].committed = this.clock;
             // SPEC: handle here PC & flush()
         } else {
             this.REG.readCDB(this.CDB);
@@ -475,13 +474,15 @@ class RawInstruction {
     public issued:number = -1;
     public executed:number = -1;
     public written:number = -1;
+    public committed:number = -1;
 
 
     constructor(
         public op: Op,
         public src0: string,
         public src1: string,
-        public dst: string
+        public dst: string,
+        public rowid:number
     ){}
 
     toString(): string {
@@ -543,6 +544,7 @@ StringOp['STR'] = Op.STORE;
 
 function parse(src: string): Program {
     let prg:Program = [];
+    let rowid:number = 0;
     for (let row of src.split("\n")) {
         let crow = row.trim();
         if (!crow.length || crow.lastIndexOf(';', 0) === 0)     // is a comment
@@ -552,7 +554,8 @@ function parse(src: string): Program {
         let args = crow.substring(rawcmd.length).replace(/\s+/g, '').split(',');
         prg.push(new RawInstruction(StringOp[cmd], args[0],
                                     args.length > 1 ? args[1] : "",
-                                    args.length === 3 ? args[2] : ""));
+                                    args.length === 3 ? args[2] : "",
+                                    rowid++));
     }
     return prg;
 }
@@ -853,8 +856,8 @@ type Patcher = (reg: Register, src: string) => [number, string | null];
     /*
      * qfunc: given source register returns [value, name/tag]
      * */
-    patch(ri: RawInstruction, pc: number, qfunc: Patcher): Instruction {
-        let ins = new Instruction(ri.op, ri.dst, pc);
+    patch(ri: RawInstruction, qfunc: Patcher): Instruction {
+        let ins = new Instruction(ri.op, ri.dst, ri.rowid);
 
         let value = parseInt(ri.src0, 10);
         if (isNaN(value)) {                        // then src0 is a reg name
@@ -944,8 +947,14 @@ class Rob {
         }
     }
 
-    commit(reg: Register): void {
-        // TODO: implement me
+    // return pc of committed instruction or -1
+    commit(reg: Register): number {
+        if (!this.isEmpty() && this.cb.buffer[this.cb.head].ready) {
+            let data = this.cb.pop()!;
+            reg.regs[data.dst] = data.value
+            return data.instr.rowid;
+        }
+        return -1;
     }
 }
 

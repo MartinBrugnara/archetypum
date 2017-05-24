@@ -30,8 +30,7 @@
         if (this.pc < this.program.length) {       // If code then issue
             let rawInst = this.program[this.pc];
 
-            let inst = this.REG.patch(rawInst, this.pc,
-                this.useRob ? this.ROB.patcher : this.REG.patcher);
+            let inst = this.REG.patch(rawInst, this.useRob ? this.ROB.patcher : this.REG.patcher);
 
             let issued:boolean = false;
             if (!this.useRob || !this.ROB.isFull()) {
@@ -64,8 +63,8 @@
         for (let fu of this.FUs) fu.readCDB(this.CDB);
         if (this.useRob) {
             this.ROB.readCDB(this.CDB);
-            // TODO: expose info for graphics
-            this.ROB.commit(this.REG);
+            let rowid = this.ROB.commit(this.REG);
+            if (rowid !== -1) this.program[rowid].committed = this.clock;
             // SPEC: handle here PC & flush()
         } else {
             this.REG.readCDB(this.CDB);
