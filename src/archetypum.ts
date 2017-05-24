@@ -23,6 +23,8 @@ class CircularBuffer<T> {
         return idx;
     }
 
+    nextTag = ():number => this.tail;
+
     // Returns value or null if not available.
     pop():T | null {
         if (this.isEmpty()) return null;
@@ -89,14 +91,19 @@ class CircularBuffer<T> {
                 this.useRob ? this.ROB.patcher : this.REG.patcher);
 
             let issued:boolean = false;
-            // ROB: if(!rob.isFull()))
-            // ROB: rob.setSlot()
-            for (let fu of this.FUs) {             // find free FU
-                if (fu.tryIssue(this.clock, inst)) {
-                    this.program[this.pc].issued = this.clock;
-                    this.REG.setProducer(inst, fu.name);
-                    this.pc++;
-                    break;
+            if (!this.useRob || !this.ROB.isFull()) {
+                inst.tag = this.ROB.nextTag();
+                for (let fu of this.FUs) {             // find free FU
+                    if (fu.tryIssue(this.clock, inst)) {
+                        this.program[this.pc].issued = this.clock;
+                        if (this.useRob) {
+                            this.ROB.push(new RobEntry(rawInst, rawInst.dst));
+                        } else {
+                            this.REG.setProducer(inst, fu.name);
+                        }
+                        this.pc++;
+                        break;
+                    }
                 }
             }
         }
@@ -494,7 +501,9 @@ class Instruction {
         public vj: number = 0,   // First source operand value
         public vk: number = 0,   // Seconds source operand value
         public qj: string | null = null,   // RS name producing first operand
-        public qk: string | null = null    // RS name producing second operand
+        public qk: string | null = null,   // RS name producing second operand
+
+        public tag: string | null = null
     ){}
 
     kind(): FuKind {
@@ -904,6 +913,11 @@ class Rob {
         this.buffer = new CircularBuffer<RobEntry>(size)
     }
 
+    isFull = ():boolean => this.buffer.isFull();
+    nextTag = ():string => String(this.buffer.nextTag());
+    push = (r:RobEntry):number => this.buffer.push(r);
+    pop = ():RobEntry|null => this.buffer.pop();
+
     patcher = function(me: Rob) {
         return function(registry: Register, reg: string): [number, string | null] {
             for (let item of me.buffer.reverse()) {
@@ -926,8 +940,8 @@ class RobEntry {
     constructor(
         public instr: RawInstruction,
         public dst: string,
-        public value: number,
-        public ready: boolean,
+        public value: number = 0,
+        public ready: boolean = false,
     ){}
 }
 // some spaghetti code from 2AM:w

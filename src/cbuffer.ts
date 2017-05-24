@@ -23,6 +23,8 @@ class CircularBuffer<T> {
         return idx;
     }
 
+    nextTag = ():number => this.tail;
+
     // Returns value or null if not available.
     pop():T | null {
         if (this.isEmpty()) return null;

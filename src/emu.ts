@@ -34,14 +34,19 @@
                 this.useRob ? this.ROB.patcher : this.REG.patcher);
 
             let issued:boolean = false;
-            // ROB: if(!rob.isFull()))
-            // ROB: rob.setSlot()
-            for (let fu of this.FUs) {             // find free FU
-                if (fu.tryIssue(this.clock, inst)) {
-                    this.program[this.pc].issued = this.clock;
-                    this.REG.setProducer(inst, fu.name);
-                    this.pc++;
-                    break;
+            if (!this.useRob || !this.ROB.isFull()) {
+                inst.tag = this.ROB.nextTag();
+                for (let fu of this.FUs) {             // find free FU
+                    if (fu.tryIssue(this.clock, inst)) {
+                        this.program[this.pc].issued = this.clock;
+                        if (this.useRob) {
+                            this.ROB.push(new RobEntry(rawInst, rawInst.dst));
+                        } else {
+                            this.REG.setProducer(inst, fu.name);
+                        }
+                        this.pc++;
+                        break;
+                    }
                 }
             }
         }

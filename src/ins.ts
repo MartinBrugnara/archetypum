@@ -29,7 +29,9 @@ class Instruction {
         public vj: number = 0,   // First source operand value
         public vk: number = 0,   // Seconds source operand value
         public qj: string | null = null,   // RS name producing first operand
-        public qk: string | null = null    // RS name producing second operand
+        public qk: string | null = null,   // RS name producing second operand
+
+        public tag: string | null = null
     ){}
 
     kind(): FuKind {
