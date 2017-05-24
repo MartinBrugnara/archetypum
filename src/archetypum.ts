@@ -1,3 +1,55 @@
+class CircularBuffer<T> {
+
+    buffer:T[];
+    head:number = 0;
+    tail:number = 0;
+    availableData:number = 0;
+
+    constructor(size:number) {
+        this.buffer = new Array(size);
+    }
+
+    isEmpty():boolean {return this.availableData === 0;}
+
+    isFull():boolean {return this.availableData === this.buffer.length;}
+
+    // Returns buffer index if success -1 otherwise.
+    push(data:T): number {
+        if (this.isFull()) return -1;
+        let idx = this.tail % this.buffer.length;
+        this.buffer[idx] = data;
+        this.tail = (this.tail + 1) % this.buffer.length;
+        this.availableData++;
+        return idx;
+    }
+
+    // Returns value or null if not available.
+    pop():T | null {
+        if (this.isEmpty()) return null;
+        let data = this.buffer[this.head % this.buffer.length];
+        this.head = (this.head + 1) % this.buffer.length;
+        this.availableData--;
+        return data;
+    }
+
+    [Symbol.iterator] = function(me: CircularBuffer<T>) {
+        return function* ():IterableIterator<[number, T]> {
+            for(let idx=0; idx<me.availableData; idx++) {
+                let  i = (me.head + idx) % me.buffer.length;
+                yield [i, me.buffer[i]];
+            }
+        }
+    }(this);
+
+    reverse = function(me: CircularBuffer<T>) {
+        return function* ():IterableIterator<[number, T]>  {
+            for(let idx=me.availableData-1; idx>=0; idx--) {
+                let  i = (me.head + idx) % me.buffer.length;
+                yield [i, me.buffer[i]];
+            }
+        }
+    }(this);
+}
  class CdbMessage {
     constructor(public rsName: string, public result: number, public dst: string) {}
 }
@@ -8,15 +60,22 @@
     REG:Register;
     FUs:FunctionalUnit[];
     CDB:Queue<CdbMessage>;
+    ROB:Rob;
+    useRob:boolean = false;
 
     constructor(
             fuConf: FuConfig,
             regConf: RegConfig,
+            robSize: number, // if 0 then disable
             public cache:XCache,
             public readonly program:Program
     ) {
         this.REG = new Register(regConf);
         this.FUs = FuFactory(fuConf)
+        if (robSize) {
+            this.ROB = new Rob(robSize);
+            this.useRob = true;
+        }
     }
 
     step():boolean {
@@ -25,10 +84,14 @@
 
         if (this.pc < this.program.length) {       // If code then issue
             let rawInst = this.program[this.pc];
-            let inst = this.REG.patch(rawInst, this.pc);
+
+            let inst = this.REG.patch(rawInst, this.pc,
+                this.useRob ? this.ROB.patcher : this.REG.patcher);
 
             let issued:boolean = false;
-            for (let fu of this.FUs) {
+            // ROB: if(!rob.isFull()))
+            // ROB: rob.setSlot()
+            for (let fu of this.FUs) {             // find free FU
                 if (fu.tryIssue(this.clock, inst)) {
                     this.program[this.pc].issued = this.clock;
                     this.REG.setProducer(inst, fu.name);
@@ -48,12 +111,17 @@
             if (rowid >= 0) this.program[rowid].written = this.clock;
         }
 
+        // ROB: rob.readCDB(this.CDB);
+        // ROB: rob.commit() & handle spec
+
         // TODO: add opt for yield (4 graphics)
+        // ROB: comment out
         for (let fu of this.FUs) fu.readCDB(this.CDB);
         this.REG.readCDB(this.CDB);
 
         // if all fu are not busy end
         for (let fu of this.FUs) if (fu.isBusy()) return true;
+        // ROB: && rob.isEmpty();
         return this.pc < this.program.length;
     }
 }
@@ -755,6 +823,8 @@ XCacheMap["nwayset"] = (c: CacheConf) => new NWayCache(c);
 }
  type RegConfig = {ints:number, floats:number};
 
+type Patcher = (reg: Register, src: string) => [number, string | null];
+
  class Register {
     public regs: {[key:string]: number} = {};
     public qi: {[key:string]: string | null} = {};
@@ -770,35 +840,45 @@ XCacheMap["nwayset"] = (c: CacheConf) => new NWayCache(c);
         }
     }
 
-    patch(ri: RawInstruction, pc: number):Instruction {
+    /*
+     * qfunc: given source register returns [value, name/tag]
+     * */
+    patch(ri: RawInstruction, pc: number, qfunc: Patcher): Instruction {
         let ins = new Instruction(ri.op, ri.dst, pc);
 
         let value = parseInt(ri.src0, 10);
         if (isNaN(value)) {                        // then src0 is a reg name
-            if (this.qi[ri.src0] === null) {
-                value = this.regs[ri.src0];
+            let res = qfunc(this, ri.src0), v = res[0], remote = res[1];
+            if (remote === null) {
+                value = v;
             } else {
                 value = 0;
-                ins.qj = this.qi[ri.src0];
+                ins.qj = remote;
             }
         }
         ins.vj = value;
 
         if (ri.src1.length !== 0) {
             value = parseInt(ri.src1, 10);
-            if (isNaN(value)) {                        // then src1 is a reg name
-                if (this.qi[ri.src1] === null) {
-                    value = this.regs[ri.src1];
+            if (isNaN(value)) {                    // then src1 is a reg name
+                let res = qfunc(this, ri.src1);
+                let v = res[0], remote = res[1];
+                if (remote  === null) {
+                    value = v;
                 } else {
                     value = 0;
-                    ins.qk = this.qi[ri.src1];
+                    ins.qk = remote;
                 }
             }
             ins.vk = value;
         }
 
-
         return ins
+    }
+
+    // No Rob patcher implementation
+    patcher = function(me: Register, reg: string): [number, string | null] {
+        return [me.regs[reg], me.qi[reg]];
     }
 
     setProducer(inst: Instruction, rs: string) {
@@ -816,6 +896,39 @@ XCacheMap["nwayset"] = (c: CacheConf) => new NWayCache(c);
             }
         }
     }
+}
+class Rob {
+    buffer:CircularBuffer<RobEntry>;
+
+    constructor(size: number) {
+        this.buffer = new CircularBuffer<RobEntry>(size)
+    }
+
+    patcher = function(me: Rob) {
+        return function(registry: Register, reg: string): [number, string | null] {
+            for (let item of me.buffer.reverse()) {
+                let tag = item[0], entry = item[1];
+                if (reg === entry.dst) {
+                    if (entry.ready) {
+                        return [entry.value, null];
+                    } else {
+                        return [0, String(tag)];
+                    }
+                }
+            }
+            return [registry.regs[reg], null];
+        }
+    }(this);
+
+}
+
+class RobEntry {
+    constructor(
+        public instr: RawInstruction,
+        public dst: string,
+        public value: number,
+        public ready: boolean,
+    ){}
 }
 // some spaghetti code from 2AM:w
 var ISSUE_EXEC_DELAY:boolean = true;
@@ -938,6 +1051,7 @@ function setup() {
             [FuKind.MEMORY, 'MEM', 1, {cache: CACHE}],
         ],
         {ints: safeInt(ireg.value), floats: safeInt(freg.value)},
+        0, // TODO: gui ROB SIZE
         CACHE,
         parse(raw_src.value),
     )

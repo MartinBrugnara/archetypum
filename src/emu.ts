@@ -5,15 +5,22 @@
     REG:Register;
     FUs:FunctionalUnit[];
     CDB:Queue<CdbMessage>;
+    ROB:Rob;
+    useRob:boolean = false;
 
     constructor(
             fuConf: FuConfig,
             regConf: RegConfig,
+            robSize: number, // if 0 then disable
             public cache:XCache,
             public readonly program:Program
     ) {
         this.REG = new Register(regConf);
         this.FUs = FuFactory(fuConf)
+        if (robSize) {
+            this.ROB = new Rob(robSize);
+            this.useRob = true;
+        }
     }
 
     step():boolean {
@@ -22,10 +29,14 @@
 
         if (this.pc < this.program.length) {       // If code then issue
             let rawInst = this.program[this.pc];
-            let inst = this.REG.patch(rawInst, this.pc);
+
+            let inst = this.REG.patch(rawInst, this.pc,
+                this.useRob ? this.ROB.patcher : this.REG.patcher);
 
             let issued:boolean = false;
-            for (let fu of this.FUs) {
+            // ROB: if(!rob.isFull()))
+            // ROB: rob.setSlot()
+            for (let fu of this.FUs) {             // find free FU
                 if (fu.tryIssue(this.clock, inst)) {
                     this.program[this.pc].issued = this.clock;
                     this.REG.setProducer(inst, fu.name);
@@ -45,12 +56,17 @@
             if (rowid >= 0) this.program[rowid].written = this.clock;
         }
 
+        // ROB: rob.readCDB(this.CDB);
+        // ROB: rob.commit() & handle spec
+
         // TODO: add opt for yield (4 graphics)
+        // ROB: comment out
         for (let fu of this.FUs) fu.readCDB(this.CDB);
         this.REG.readCDB(this.CDB);
 
         // if all fu are not busy end
         for (let fu of this.FUs) if (fu.isBusy()) return true;
+        // ROB: && rob.isEmpty();
         return this.pc < this.program.length;
     }
 }

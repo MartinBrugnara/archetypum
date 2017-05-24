@@ -119,6 +119,7 @@ function setup() {
             [FuKind.MEMORY, 'MEM', 1, {cache: CACHE}],
         ],
         {ints: safeInt(ireg.value), floats: safeInt(freg.value)},
+        0, // TODO: gui ROB SIZE
         CACHE,
         parse(raw_src.value),
     )

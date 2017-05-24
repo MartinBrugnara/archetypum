@@ -1,5 +1,7 @@
  type RegConfig = {ints:number, floats:number};
 
+type Patcher = (reg: Register, src: string) => [number, string | null];
+
  class Register {
     public regs: {[key:string]: number} = {};
     public qi: {[key:string]: string | null} = {};
@@ -15,35 +17,45 @@
         }
     }
 
-    patch(ri: RawInstruction, pc: number):Instruction {
+    /*
+     * qfunc: given source register returns [value, name/tag]
+     * */
+    patch(ri: RawInstruction, pc: number, qfunc: Patcher): Instruction {
         let ins = new Instruction(ri.op, ri.dst, pc);
 
         let value = parseInt(ri.src0, 10);
         if (isNaN(value)) {                        // then src0 is a reg name
-            if (this.qi[ri.src0] === null) {
-                value = this.regs[ri.src0];
+            let res = qfunc(this, ri.src0), v = res[0], remote = res[1];
+            if (remote === null) {
+                value = v;
             } else {
                 value = 0;
-                ins.qj = this.qi[ri.src0];
+                ins.qj = remote;
             }
         }
         ins.vj = value;
 
         if (ri.src1.length !== 0) {
             value = parseInt(ri.src1, 10);
-            if (isNaN(value)) {                        // then src1 is a reg name
-                if (this.qi[ri.src1] === null) {
-                    value = this.regs[ri.src1];
+            if (isNaN(value)) {                    // then src1 is a reg name
+                let res = qfunc(this, ri.src1);
+                let v = res[0], remote = res[1];
+                if (remote  === null) {
+                    value = v;
                 } else {
                     value = 0;
-                    ins.qk = this.qi[ri.src1];
+                    ins.qk = remote;
                 }
             }
             ins.vk = value;
         }
 
-
         return ins
+    }
+
+    // No Rob patcher implementation
+    patcher = function(me: Register, reg: string): [number, string | null] {
+        return [me.regs[reg], me.qi[reg]];
     }
 
     setProducer(inst: Instruction, rs: string) {
