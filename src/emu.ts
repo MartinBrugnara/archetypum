@@ -17,6 +17,7 @@
             robSize: number, // if 0 then disable
             public cache:XCache,
             public memMgm:MemoryMGM,
+            public IU:Spec,
             public readonly program:Program
     ) {
         this.REG = new Register(regConf);
@@ -33,25 +34,47 @@
 
         if (this.pc < this.program.length) {       // If code then issue
             let rawInst = this.program[this.pc];
-
+            let re = new RobEntry(rawInst, rawInst.dst, this.uid);
             let inst = this.REG.patch(rawInst, this.useRob ? this.ROB.patcher : this.REG.patcher, this.uid);
 
-            let issued:boolean = false;
             if (!this.useRob || !this.ROB.isFull()) {
                 if (this.useRob) inst.tag = this.ROB.nextTag();
-                for (let fu of this.FUs) {             // find free FU
-                    if (fu.tryIssue(this.clock, inst)) {
-                        this.hist.push(rawInst);
-                        this.hist[this.uid].issued = this.clock;
-                        if (this.useRob) {
-                            this.ROB.push(new RobEntry(rawInst, rawInst.dst));
-                        } else {
-                            this.REG.setProducer(inst, fu.name);
-                        }
-                        this.pc++;
-                        this.uid++;
-                        break;
+
+                // TODO: check me
+                if (OpKindMap[inst.op] === FuKind.IU) {
+                    if (inst.op === Op.JMP) {
+                        this.pc = inst.vj;
+                        re.ready = this.clock; // TODO: reconsider +1
+                        issued = true;
+                    } else if (this.IU.speculative || (!this.IU.speculative && this.ROB.isEmpty())) {
+                        this.pc = this.IU.nextPc(rawInst, this.REG.FLAGS);
+                        // TODO: reconsider +1
+                        /* Not tech correct, but since we flush from top only is OK.
+                         * It should be marked as ready only once the previous op has been completed
+                         */
+                        re.ready = this.clock;
+                        re.value = this.pc; // (possibly wrongly speculated value)
+                        issued = true
                     }
+                } else {
+                    for (let fu of this.FUs) {             // find free FU
+                        if (fu.tryIssue(this.clock, inst)) {
+                            issued = true;
+                            this.pc++;
+                            break;
+                        }
+                    }
+                }
+
+                if (issued) {
+                    this.hist.push(rawInst);
+                    this.hist[this.uid].issued = this.clock;
+                    if (this.useRob) {
+                        this.ROB.push(re);
+                    } else {
+                        this.REG.setProducer(inst, fu.name);
+                    }
+                    this.uid++;
                 }
             }
         }
@@ -69,9 +92,15 @@
         for (let fu of this.FUs) fu.readCDB(this.CDB);
         if (this.useRob) {
             this.ROB.readCDB(this.clock, this.CDB);
-            let rowid = this.ROB.commit(this.clock, this.REG);
-            if (rowid !== -1) this.hist[rowid].committed = this.clock;
-            // SPEC: handle here PC & flush()
+            let res = this.ROB.commit(this.clock, this.REG);
+            if (res.uid !== -1) this.hist[rowid].committed = this.clock;
+            if (res.flush !== -1) {
+                this.ROB.flush();
+                for (let fu of this.FUs) fu.flush();
+                this.memMgm.flush();
+                // TODO: next id
+                this.pc = res.flush;
+            }
         } else {
             this.REG.readCDB(this.CDB);
         }

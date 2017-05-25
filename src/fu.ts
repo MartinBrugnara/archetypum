@@ -6,6 +6,7 @@ interface FunctionalUnit {
     readCDB(cdb: Queue<CdbMessage>): void;
     isBusy(): boolean;
     getInstr(): Instruction | null;
+    flush(): void;
 }
 
 enum FuKind {ADDER, MULTIPLIER, MEMORY}
@@ -34,7 +35,7 @@ class FunctionalUnitBaseClass implements FunctionalUnit {
         return true;
     }
 
-    /* Returns rowid (pc) when exec start, -1 otherwise */
+    /* Returns rowid when exec start, -1 otherwise */
     execute(clockTime: number): number {
         if (
             this.isBusy() && this.isReady()
@@ -42,7 +43,7 @@ class FunctionalUnitBaseClass implements FunctionalUnit {
         && (clockTime >= (this.issuedTime + Number(ISSUE_EXEC_DELAY)))
         ) {
             this.endTime = clockTime + this.duration + Number(EXEC_WRITE_DELAY);
-            return this.instr!.pc
+            return this.instr!.uid
         }
         return -1;
     }
@@ -51,14 +52,14 @@ class FunctionalUnitBaseClass implements FunctionalUnit {
         throw new Error('Implement in child');
     }
 
-    /* Return rowid (pc) when it writes a result, -1 otherwise. */
+    /* Return rowid when it writes a result, -1 otherwise. */
     writeResult(clockTime: number, cdb: Queue<CdbMessage>): number {
         if (this.isBusy && this.endTime === clockTime) {
             this.computeValue();
             cdb.push(new CdbMessage(this.instr!.tag || this.name, this.result, this.instr!.dst));
-            let pc = this.instr!.pc;
+            let uid = this.instr!.uid;
             this.instr = null;
-            return pc;
+            return uid;
         }
         return -1;
     }
@@ -166,7 +167,7 @@ class MemoryFU extends FunctionalUnitBaseClass {
         this.duration = kwargs['duration'];
     }
 
-    /* Returns rowid (pc) when exec start, -1 otherwise */
+    /* Returns uid when exec start, -1 otherwise */
     execute(clockTime: number): number {
         let starting = false;
         if (
@@ -208,7 +209,7 @@ class MemoryFU extends FunctionalUnitBaseClass {
             }
         }
 
-        return starting ? this.instr!.pc : -1;
+        return starting ? this.instr!.uid : -1;
     }
 
     computeValue() {

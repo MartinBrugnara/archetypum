@@ -1,27 +1,38 @@
- type RegConfig = {ints:number, floats:number};
+type RegConfig = {ints:number, floats:number};
 
 type Patcher = (reg: Register, src: string) => [number, string | null];
 
- class Register {
+enum Flag = {
+    ZF=0,
+    // When adding here, add also handler in Rob.setFlags()
+    NFLAGS, // must be last item.
+}
+
+class Register {
     public regs: {[key:string]: number} = {};
     public qi: {[key:string]: string | null} = {};
 
+    public FLAGS: boolean[];
+
     constructor(conf:RegConfig){
-        for(let i=0; i<conf.ints; i++) {
+        for (let i=0; i<conf.ints; i++) {
             this.regs[`R${i}`] = 0;
             this.qi[`R${i}`] = null;
         }
-        for(let f=0; f<conf.floats; f++) {
+        for (let f=0; f<conf.floats; f++) {
             this.regs[`F${f}`] = 0;
             this.qi[`F${f}`] = null;
         }
+
+        for (let f=0; f<Flag.NFLAGS; f++)
+            this.FLAGS[f] = false;
     }
 
     /*
      * qfunc: given source register returns [value, name/tag]
      * */
     patch(ri: RawInstruction, qfunc: Patcher, uid:number): Instruction {
-        let ins = new Instruction(ri.op, ri.dst, uid);
+        let ins = new Instruction(ri.op, ri.dst, ri.pc, uid);
 
         let value = parseInt(ri.src0, 10);
         if (isNaN(value)) {                        // then src0 is a reg name

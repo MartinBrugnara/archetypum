@@ -26,7 +26,8 @@ class Instruction {
     constructor(
         public op: Op,                     // Operation
         public dst: string,                // destination register (only REG)
-        public pc: number,                 // Since ROB is UID
+        public pc: number,                 // Program counter
+        public uid: number,                // uid, assigned when issued.
 
         public vj: number = 0,   // First source operand value
         public vk: number = 0,   // Seconds source operand value
@@ -42,15 +43,18 @@ class Instruction {
 }
 
 
-enum Op {ADD, SUB, MUL, DIV, LOAD, STORE}
+enum Op {ADD, SUB, MUL, DIV, LOAD, STORE, JMP, JZ, JNZ}
 
 let OpKindMap: {[index:number]: FuKind} = {}
 OpKindMap[Op.ADD] = FuKind.ADDER;
 OpKindMap[Op.SUB] = FuKind.ADDER;
 OpKindMap[Op.MUL] = FuKind.MULTIPLIER;
 OpKindMap[Op.DIV] = FuKind.MULTIPLIER;
-OpKindMap[Op.LOAD] = FuKind.MEMORY;
+OpKindMap[Op.LOAD]  = FuKind.MEMORY;
 OpKindMap[Op.STORE] = FuKind.MEMORY;
+OpKindMap[Op.JMP] = FuKind.IU;
+OpKindMap[Op.JZ]  = FuKind.IU;
+OpKindMap[Op.JNZ] = FuKind.IU;
 
 
 let OpString: {[index:number]: string} = {}
@@ -60,6 +64,9 @@ OpString[Op.MUL] = "MUL";
 OpString[Op.DIV] = "DIV";
 OpString[Op.LOAD] = "LDR";
 OpString[Op.STORE] = "STR";
+OpString[Op.JMP] = "JMP";
+OpString[Op.JZ]  = "JZ";
+OpString[Op.JNZ] = "JNZ";
 
 let StringOp: {[index:string]: Op} = {}
 StringOp['ADD'] = Op.ADD;
@@ -68,7 +75,9 @@ StringOp['MUL'] = Op.MUL;
 StringOp['DIV'] = Op.DIV;
 StringOp['LDR'] = Op.LOAD;
 StringOp['STR'] = Op.STORE;
-
+StringOp['JMP'] = Op.JMP;
+StringOp['JZ']  = Op.JZ;
+StringOp['JNZ'] = Op.JNZ;
 
 function parse(src: string): Program {
     let prg:Program = [];
