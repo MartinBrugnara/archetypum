@@ -17,6 +17,10 @@ class Memory {
         this.writeLatency = c.writeLatency;
     }
 
+    flush() {
+        this.currentOpComplete = -1;
+    }
+
     isBusy() {
         return this.currentOpComplete !== -1;
     }
@@ -94,6 +98,10 @@ class XCache {
         return this.working;
     }
 
+    flush() {
+        this.working = false;
+    }
+
     read(clock: number, loc:number): number | null {
         let value = this.mem.read(clock, loc)
         this.working = value === null;
@@ -137,6 +145,13 @@ class NWayCache extends XCache {
             for (let j=0; j<this.n; j++)
                 this._cache[i].push( [false, 0, 0, false] );
         }
+    }
+
+    flush() {
+        super();
+        this.writing = null;
+        this.currentOpComplete = -1;
+        this.miss = false;
     }
 
     isBusy() {
@@ -281,6 +296,12 @@ class MemoryMGM {
     private currFU:string = '';
 
     constructor(private cache: XCache, private useRob:boolean){}
+
+    flush() {
+        this.state = MgmIntState.FREE;
+        this.currFU = '';
+        this.cache.flush();
+    }
 
     read(funame:string, clock:number, loc:number): number | null {
         if (this.state !== MgmIntState.FREE && funame !== this.currFU)

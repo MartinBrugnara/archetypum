@@ -88,6 +88,12 @@ class FunctionalUnitBaseClass implements FunctionalUnit {
             }
         }
     }
+
+    flush(): void {
+        this.instr = null;
+        this.issuedTime = -1;
+        this.endTime = -1;
+    }
 }
 
 class Adder extends FunctionalUnitBaseClass {
@@ -99,7 +105,7 @@ class Adder extends FunctionalUnitBaseClass {
             this.duration = kwargs.duration;
     }
 
-    computeValue() {
+    computeValue(): void {
         switch (this.instr!.op) {
             case Op.ADD:
                 this.result = this.instr!.vj + this.instr!.vk;
@@ -121,7 +127,7 @@ class Multiplier extends FunctionalUnitBaseClass {
             this.duration = kwargs.duration;
     }
 
-    computeValue() {
+    computeValue(): void {
         switch (this.instr!.op) {
             case Op.MUL:
                 this.result = this.instr!.vj * this.instr!.vk;
@@ -217,6 +223,15 @@ class MemoryFU extends FunctionalUnitBaseClass {
          * In case of STORE, nothing has to be returned.
          * --> do nothing.
          */
+    }
+
+    flush(): void {
+        super();
+        this.waiting = false;
+        this.startTime = null;
+        // clean also cache & memory state (not content)
+        this.kwargs.mem.flush();
+        this.memMgm.flush();
     }
 }
 FuMap[FuKind.MEMORY] = (name:string, kwargs: KwArgs) => new MemoryFU(name, kwargs);

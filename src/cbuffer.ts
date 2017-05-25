@@ -1,5 +1,4 @@
 class CircularBuffer<T> {
-
     buffer:T[];
     head:number = 0;
     tail:number = 0;

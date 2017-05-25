@@ -12,6 +12,11 @@ class Rob {
     push = (r:RobEntry):number => this.cb.push(r);
     pop = ():RobEntry|null => this.cb.pop();
 
+    flush(): void {
+        this.cb = new CircularBuffer<RobEntry>(this.size);
+        this.memMgm.rob = this;
+    }
+
     patcher = function(me: Rob) {
         return function(registry: Register, reg: string): [number, string | null] {
             for (let item of me.cb.reverse()) {
