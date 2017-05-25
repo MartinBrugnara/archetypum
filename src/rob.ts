@@ -1,7 +1,7 @@
 class Rob {
     cb:CircularBuffer<RobEntry>;
 
-    constructor(size: number) {
+    constructor(size: number, private memMgm:MemoryMGM) {
         this.cb = new CircularBuffer<RobEntry>(size)
     }
 
@@ -37,48 +37,33 @@ class Rob {
     }
 
     // return pc of committed instruction or -1
-    commit(reg: Register, mem: MemoryMGM): number {
-        if (!this.isEmpty()) {
-            let head = this.cb.buffer[this.cb.head];
+    commit(clock: number, reg: Register): number {
+        if (this.isEmpty())
+            return -1
 
-            if (head.dst === '') {
-                if (head.ready)         // Nothing to do
-                    return this.cb.pop()!.instr.rowid;
-            } else if (head.dst in reg.regs) {
-                if (head.ready) {       // Is Reg and ready: save to reg
-                    reg.regs[head.dst] = head.value;
-                    return this.cb.pop()!.instr.rowid;
-                }
-            } else {
-                // is memory: try to write to memory
-                if (!memory.isBusy())
-                    let memory.tryIssue()
-            }
+        let head = this.cb.buffer[this.cb.head];
+        if (!head.ready)
+            return -1;
 
-
-
-            && this.cb.buffer[this.cb.head].ready) {
-                // TODO: wat ? fix me
-                let data = this.cb.pop()!;
-                if (data.dst in reg.regs) {
-                    reg.regs[data.dst] = data.value
-                    return data.instr.rowid;
-                } else {
-                    return
-                }
-
-                // Check if something to write
-
-
-                return -1;
-            }
+        if (head.dst === '') {                  // Nothing to do
+            return this.cb.pop()!.instr.rowid;
+        } else if (head.dst in reg.regs) {      // Is reg: save to reg
+            reg.regs[head.dst] = head.value;
+            return this.cb.pop()!.instr.rowid;
+        } else {                                // Is memory: write.
+            if (this.memMgm.write('ROB', clock, head.dst, head.value, true))
+                return this.cb.pop()!.instr.rowid;
         }
 
-        class RobEntry {
-            constructor(
-                public instr: RawInstruction,
-                public dst: string,
-                public value: number = 0,
-                public ready: boolean = false,
-            ){}
-        }
+        return -1;
+    }
+}
+
+class RobEntry {
+    constructor(
+        public instr: RawInstruction,
+        public dst: string,
+        public value: number = 0,
+            public ready: boolean = false,
+    ){}
+}

@@ -152,6 +152,13 @@ class MemoryFU extends FunctionalUnitBaseClass {
      *   and wait until completes.
      */
 
+    private memMgm:MemoryMGM;
+
+    constructor(name: string, kwargs: KwArgs) {
+        super(FuKind.MEMORY, name);
+        this.memMgm = kwargs['memMgm'];
+    }
+
     // Duration iif to compute addr & offset
     duration = 1; // TODO: get from config
     startTime: number | null = null;
@@ -185,7 +192,7 @@ class MemoryFU extends FunctionalUnitBaseClass {
                     }
                     break
                 case Op.STORE:
-                    done = this.memMgm.write(this.name, clockTime, this.instr!.vj, this.instr!.vk))
+                    done = this.memMgm.write(this.name, clockTime, this.instr!.vj, this.instr!.vk);
                     this.instr!.dst = this.instr!.vk;
                     this.result = this.instr!.vj;
                     break

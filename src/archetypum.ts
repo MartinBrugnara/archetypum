@@ -75,7 +75,8 @@ class CircularBuffer<T> {
         this.REG = new Register(regConf);
         this.FUs = FuFactory(fuConf)
         if (robSize) {
-            this.ROB = new Rob(robSize);
+            this.MemMGM = new
+            this.ROB = new Rob(robSize, memMgm);
             this.useRob = true;
         }
     }
@@ -120,7 +121,7 @@ class CircularBuffer<T> {
         for (let fu of this.FUs) fu.readCDB(this.CDB);
         if (this.useRob) {
             this.ROB.readCDB(this.CDB);
-            let rowid = this.ROB.commit(this.REG);
+            let rowid = this.ROB.commit(this.clock, this.REG);
             if (rowid !== -1) this.program[rowid].committed = this.clock;
             // SPEC: handle here PC & flush()
         } else {
@@ -181,7 +182,7 @@ class FunctionalUnitBaseClass implements FunctionalUnit {
         return -1;
     }
 
-    computeValue(): void {
+    computeValue(): boolean {
         throw new Error('Implement in child');
     }
 
@@ -279,72 +280,76 @@ function FuFactory(conf: FuConfig): FunctionalUnit[] {
     return fus;
 }
 
+class MemoryFU extends FunctionalUnitBaseClass {
+    /* MemoryFU is responsible for:
+     * - computing actual address (and simulate latency here)
+     * - read / write to memory manager (external component)
+     *   and wait until completes.
+     */
 
-
-class MemoryMGM extends FunctionalUnitBaseClass {
-    readonly duration = 0;
-    private cache: XCache;
-    private isComputing: boolean=false;
+    private memMgm:MemoryMGM;
 
     constructor(name: string, kwargs: KwArgs) {
         super(FuKind.MEMORY, name);
-        this.cache = <XCache>kwargs['cache'];
+        this.memMgm = kwargs['memMgm'];
     }
 
-    computeValue() {
-        console.error('I should never be invoked');
-    }
+    // Duration iif to compute addr & offset
+    duration = 1; // TODO: get from config
+    startTime: number | null = null;
 
     /* Returns rowid (pc) when exec start, -1 otherwise */
     execute(clockTime: number): number {
-        if (this.isBusy() && this.isReady() &&
-            (clockTime >= (this.issuedTime + Number(ISSUE_EXEC_DELAY)))) {
+        if (
+            this.isBusy() && this.isReady() &&
+            (!this.endTime || this.endTime < clockTime) &&
+            (clockTime >= (this.issuedTime + Number(ISSUE_EXEC_DELAY))) &&
+            !this.waiting
+        ) {
+            // Start execution
+            this.waiting = true;
+            return this.instr!.pc
+        }
 
-            if (this.endTime >= clockTime)
-                return -1; // result already computed, waiting 2 write.
-
-            let done:boolean = false;
+        if (this.waiting && (clockTime >= (
+                this.issuedTime + Number(ISSUE_EXEC_DELAY)) +
+                // If offset, pay "addition" time
+                (this.instr!.vk !== 0 ? this.duration : 0)
+            )
+        ) {
+            let done=false;
             switch (this.instr!.op) {
                 case Op.LOAD:
-                    let value = this.cache.read(clockTime, this.instr!.vk + this.instr!.vj);
-                    if (value !== null) {
-                        this.result = value
+                    let value = this.memMgm.read(this.name, clockTime, this.instr!.vj + this.instr!.vk);
+                    if (value !== null) { // done
+                        this.result = value;
                         done = true;
                     }
-                    break;
+                    break
                 case Op.STORE:
-                    done = this.cache.write(clockTime, this.instr!.vk, this.instr!.vj);
-                    break;
+                    done = this.memMgm.write(this.name, clockTime, this.instr!.vj, this.instr!.vk);
+                    this.instr!.dst = this.instr!.vk;
+                    this.result = this.instr!.vj;
+                    break
             }
 
-            if (done) this.endTime = clockTime + Number(EXEC_WRITE_DELAY);
-
-            if (!this.isComputing) {
-                this.isComputing = true;
-                return this.instr!.pc
+            if (done) {
+                this.endTime = clockTime + Number(EXEC_WRITE_DELAY);
+                this.waiting = false;
             }
         }
+
         return -1;
     }
 
-    /* Return rowid (pc) when it writes a result, -1 otherwise. */
-    /* NOTE: endTime is considered as minEndTime (account for delays).
-     * We relay on cache output to compute the actual exec time. */
-    writeResult(clockTime: number, cdb: Queue<CdbMessage>): number {
-        if (this.endTime !== clockTime) return -1;
-
-        if (this.instr!.op === Op.LOAD)
-            cdb.push(new CdbMessage(this.instr!.tag || this.name, this.result, this.instr!.dst));
-
-        this.isComputing = false;
-        this.endTime = -1;
-
-        let pc = this.instr!.pc;
-        this.instr = null;
-        return pc;
+    computeValue() {
+        /* If any value has been read is already in results.
+         * In case of STORE, nothing has to be returned.
+         * --> do nothing.
+         */
     }
 }
-FuMap[FuKind.MEMORY] = (name:string, kwargs: KwArgs) => new MemoryMGM(name, kwargs);
+FuMap[FuKind.MEMORY] = (name:string, kwargs: KwArgs) => new MemoryFU(name, kwargs);
 class Graphics {
 
     clk: HTMLElement = document.getElementById('clock')!;
@@ -857,6 +862,68 @@ class NWayCache extends XCache {
     }
 }
 XCacheMap["nwayset"] = (c: CacheConf) => new NWayCache(c);
+
+enum MgmIntState {FREE, READ, WRITE};
+class MemoryMGM {
+    /* MemoryMGM is the main interface to the memory:
+     * it should abstract away cache and ROB possible existence.
+     */
+
+    private state: MgmIntState = MgmIntState.FREE;
+    private currentFU:string = '';
+
+    constructor(private cache: XCache, private useRob:boolean){}
+
+    read(funame:string, clock:number, loc:number): number | null {
+        if (this.state !== MgmIntState.FREE && funame !== this.currFU)
+            return;
+
+        // First check in ROB
+        if (this.useRob) {
+            for (let entry of this.rob.reverse()) {
+                if (lock === entry[1].dst)
+                    return entry[1].value;
+            }
+        }
+
+        // Go to mem, via cache, if not already busy.
+        if (!this.cache.isBusy()) {
+            this.state = MgmIntState.READ;
+            this.currFU = funame;
+        }
+
+        if (this.state === MgmIntState.READ) {
+            let value = this.cache.read(clock, loc);
+            if (value !== null)
+                this.state = MgmIntState.FREE;
+            return value;
+        }
+
+        // Default
+        return null;
+    }
+
+    write(funame:string, clock:number, loc:number, value:number, commit:boolean=false): boolean {
+        if (this.state !== MgmIntState.FREE && funame !== this.currFU)
+            return false;
+
+        // Calling from FU: do nothing;
+        if (this.useRob && !commit)
+            return true;
+
+        // Actually write to mem, via cache, if not already busy.
+        if (!this.cache.isBusy()) {
+            this.state = MgmIntState.WRITE;
+            this.currFU = funame;
+        }
+
+        if (this.state === MgmIntState.WRITE) {
+            if (this.cache.write(clock, loc, value))
+                this.state = MgmIntState.FREE;
+            return this.state === MgmIntState.FREE;
+        }
+    }
+}
  class Queue<T> {
     _store: T[] = [];
 
@@ -950,7 +1017,7 @@ type Patcher = (reg: Register, src: string) => [number, string | null];
 class Rob {
     cb:CircularBuffer<RobEntry>;
 
-    constructor(size: number) {
+    constructor(size: number, private memMgm:MemoryMGM) {
         this.cb = new CircularBuffer<RobEntry>(size)
     }
 
@@ -979,18 +1046,31 @@ class Rob {
     readCDB(cdb: Queue<CdbMessage>): void {
         for (let msg of cdb) {
             let tag = Number(msg.rsName);
+            this.cb.buffer[tag].dst = msg.dst;
             this.cb.buffer[tag].value = msg.result;
             this.cb.buffer[tag].ready = true;
         }
     }
 
     // return pc of committed instruction or -1
-    commit(reg: Register): number {
-        if (!this.isEmpty() && this.cb.buffer[this.cb.head].ready) {
-            let data = this.cb.pop()!;
-            reg.regs[data.dst] = data.value
-            return data.instr.rowid;
+    commit(clock: number, reg: Register): number {
+        if (this.isEmpty())
+            return -1
+
+        let head = this.cb.buffer[this.cb.head];
+        if (!head.ready)
+            return -1;
+
+        if (head.dst === '') {                  // Nothing to do
+            return this.cb.pop()!.instr.rowid;
+        } else if (head.dst in reg.regs) {      // Is reg: save to reg
+            reg.regs[head.dst] = head.value;
+            return this.cb.pop()!.instr.rowid;
+        } else {                                // Is memory: write.
+            if (this.memMgm.write('ROB', clock, head.dst, head.value, true))
+                return this.cb.pop()!.instr.rowid;
         }
+
         return -1;
     }
 }
@@ -1000,7 +1080,7 @@ class RobEntry {
         public instr: RawInstruction,
         public dst: string,
         public value: number = 0,
-        public ready: boolean = false,
+            public ready: boolean = false,
     ){}
 }
 // some spaghetti code from 2AM:w
@@ -1118,11 +1198,13 @@ function setup() {
         'iswriteback' : ca_val.split('_')[1] === 'wb',
     });
 
+    let memMgm = new MemoryMGM(CACHE, safeInt(rsize.value, 0) > 0);
+
     let emu = new Emulator(
         [
             [FuKind.ADDER, 'ADDR', safeInt(iaddr.value, 3), {duration: safeInt(iaddrd.value, 2)}],
             [FuKind.MULTIPLIER, 'MULT', safeInt(imult.value, 3), {duration: safeInt(imultd.value, 4)}],
-            [FuKind.MEMORY, 'MEM', 1, {cache: CACHE}],
+            [FuKind.MEMORY, 'MEM', 1, {'memMgm': memMgm}],
         ],
         {ints: safeInt(ireg.value), floats: safeInt(freg.value)},
         safeInt(rsize.value, 0),

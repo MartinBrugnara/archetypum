@@ -113,11 +113,13 @@ function setup() {
         'iswriteback' : ca_val.split('_')[1] === 'wb',
     });
 
+    let memMgm = new MemoryMGM(CACHE, safeInt(rsize.value, 0) > 0);
+
     let emu = new Emulator(
         [
             [FuKind.ADDER, 'ADDR', safeInt(iaddr.value, 3), {duration: safeInt(iaddrd.value, 2)}],
             [FuKind.MULTIPLIER, 'MULT', safeInt(imult.value, 3), {duration: safeInt(imultd.value, 4)}],
-            [FuKind.MEMORY, 'MEM', 1, {cache: CACHE}],
+            [FuKind.MEMORY, 'MEM', 1, {'memMgm': memMgm}],
         ],
         {ints: safeInt(ireg.value), floats: safeInt(freg.value)},
         safeInt(rsize.value, 0),

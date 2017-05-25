@@ -18,7 +18,8 @@
         this.REG = new Register(regConf);
         this.FUs = FuFactory(fuConf)
         if (robSize) {
-            this.ROB = new Rob(robSize);
+            this.MemMGM = new
+            this.ROB = new Rob(robSize, memMgm);
             this.useRob = true;
         }
     }
@@ -63,7 +64,7 @@
         for (let fu of this.FUs) fu.readCDB(this.CDB);
         if (this.useRob) {
             this.ROB.readCDB(this.CDB);
-            let rowid = this.ROB.commit(this.REG);
+            let rowid = this.ROB.commit(this.clock, this.REG);
             if (rowid !== -1) this.program[rowid].committed = this.clock;
             // SPEC: handle here PC & flush()
         } else {

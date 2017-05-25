@@ -260,18 +260,21 @@ class NWayCache extends XCache {
 }
 XCacheMap["nwayset"] = (c: CacheConf) => new NWayCache(c);
 
-class MemoryMGM extends {
+enum MgmIntState {FREE, READ, WRITE};
+class MemoryMGM {
     /* MemoryMGM is the main interface to the memory:
      * it should abstract away cache and ROB possible existence.
      */
 
-    enum State {FREE, READ, WRITE};
-    private state:INT_STATE = State.FREE;
+    private state: MgmIntState = MgmIntState.FREE;
+    private currentFU:string = '';
+
+    constructor(private cache: XCache, private useRob:boolean){}
 
     read(funame:string, clock:number, loc:number): number | null {
-        if (this.state !== State.FREE && funame !== this.currFU)
-
+        if (this.state !== MgmIntState.FREE && funame !== this.currFU)
             return;
+
         // First check in ROB
         if (this.useRob) {
             for (let entry of this.rob.reverse()) {
@@ -282,14 +285,14 @@ class MemoryMGM extends {
 
         // Go to mem, via cache, if not already busy.
         if (!this.cache.isBusy()) {
-            this.state = State.READ;
+            this.state = MgmIntState.READ;
             this.currFU = funame;
         }
 
-        if (this.state === State.READ) {
+        if (this.state === MgmIntState.READ) {
             let value = this.cache.read(clock, loc);
             if (value !== null)
-                this.state = State.FREE;
+                this.state = MgmIntState.FREE;
             return value;
         }
 
@@ -298,8 +301,8 @@ class MemoryMGM extends {
     }
 
     write(funame:string, clock:number, loc:number, value:number, commit:boolean=false): boolean {
-        if (this.state !== State.FREE && funame !== this.currFU)
-            return;
+        if (this.state !== MgmIntState.FREE && funame !== this.currFU)
+            return false;
 
         // Calling from FU: do nothing;
         if (this.useRob && !commit)
@@ -307,14 +310,14 @@ class MemoryMGM extends {
 
         // Actually write to mem, via cache, if not already busy.
         if (!this.cache.isBusy()) {
-            this.state = State.WRITE;
+            this.state = MgmIntState.WRITE;
             this.currFU = funame;
         }
 
-        if (this.state === State.WRITE) {
+        if (this.state === MgmIntState.WRITE) {
             if (this.cache.write(clock, loc, value))
-                this.state = State.FREE;
-            return this.state === State.FREE;
+                this.state = MgmIntState.FREE;
+            return this.state === MgmIntState.FREE;
         }
     }
 }
