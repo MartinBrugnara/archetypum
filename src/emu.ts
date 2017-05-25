@@ -63,7 +63,7 @@
 
         for (let fu of this.FUs) fu.readCDB(this.CDB);
         if (this.useRob) {
-            this.ROB.readCDB(this.CDB);
+            this.ROB.readCDB(this.clock, this.CDB);
             let rowid = this.ROB.commit(this.clock, this.REG);
             if (rowid !== -1) this.program[rowid].committed = this.clock;
             // SPEC: handle here PC & flush()
@@ -73,6 +73,7 @@
 
         // if all fu are not busy end
         for (let fu of this.FUs) if (fu.isBusy()) return true;
-        return this.pc < this.program.length && (!this.useRob || this.ROB.isEmpty());
+        if (this.useRob && !this.ROB.isEmpty()) return true;
+        return this.pc < this.program.length;
     }
 }

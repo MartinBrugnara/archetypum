@@ -90,7 +90,6 @@ class XCache {
             this.mem = <Memory>c.mem;
     }
 
-    //TODO: coccurrent acces issue? see MemoryMGM
     isBusy():boolean {
         return this.working;
     }

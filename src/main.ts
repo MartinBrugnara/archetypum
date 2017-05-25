@@ -119,7 +119,7 @@ function setup() {
         [
             [FuKind.ADDER, 'ADDR', safeInt(iaddr.value, 3), {duration: safeInt(iaddrd.value, 2)}],
             [FuKind.MULTIPLIER, 'MULT', safeInt(imult.value, 3), {duration: safeInt(imultd.value, 4)}],
-            [FuKind.MEMORY, 'MEM', 1, {'memMgm': memMgm}],
+            [FuKind.MEMORY, 'MEM', 1, {'memMgm': memMgm, duration: safeInt(iaddrd.value, 2)}],
         ],
         {ints: safeInt(ireg.value), floats: safeInt(freg.value)},
         safeInt(rsize.value, 0),

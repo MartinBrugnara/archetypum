@@ -120,7 +120,7 @@ class CircularBuffer<T> {
 
         for (let fu of this.FUs) fu.readCDB(this.CDB);
         if (this.useRob) {
-            this.ROB.readCDB(this.CDB);
+            this.ROB.readCDB(this.clock, this.CDB);
             let rowid = this.ROB.commit(this.clock, this.REG);
             if (rowid !== -1) this.program[rowid].committed = this.clock;
             // SPEC: handle here PC & flush()
@@ -130,7 +130,8 @@ class CircularBuffer<T> {
 
         // if all fu are not busy end
         for (let fu of this.FUs) if (fu.isBusy()) return true;
-        return this.pc < this.program.length && (!this.useRob || this.ROB.isEmpty());
+        if (this.useRob && !this.ROB.isEmpty()) return true;
+        return this.pc < this.program.length;
     }
 }
 interface FunctionalUnit {
@@ -290,17 +291,20 @@ class MemoryFU extends FunctionalUnitBaseClass {
     private memMgm:MemoryMGM;
     private waiting:boolean=false;
 
+    // Duration iif to compute addr & offset
+    startTime: number | null = null;
+
+    readonly duration:number = 0;
+
     constructor(name: string, kwargs: KwArgs) {
         super(FuKind.MEMORY, name);
         this.memMgm = kwargs['memMgm'];
+        this.duration = kwargs['duration'];
     }
-
-    // Duration iif to compute addr & offset
-    duration = 1; // TODO: get from config
-    startTime: number | null = null;
 
     /* Returns rowid (pc) when exec start, -1 otherwise */
     execute(clockTime: number): number {
+        let starting = false;
         if (
             this.isBusy() && this.isReady() &&
             (!this.endTime || this.endTime < clockTime) &&
@@ -309,13 +313,13 @@ class MemoryFU extends FunctionalUnitBaseClass {
         ) {
             // Start execution
             this.waiting = true;
-            return this.instr!.pc
+            starting = true;
         }
 
         if (this.waiting && (clockTime >= (
                 this.issuedTime + Number(ISSUE_EXEC_DELAY)) +
                 // If offset, pay "addition" time
-                (this.instr!.vk !== 0 ? this.duration : 0)
+                (this.instr!.op === Op.STORE && this.instr!.vk !== 0 ? this.duration : 0)
             )
         ) {
             let done=false;
@@ -340,7 +344,7 @@ class MemoryFU extends FunctionalUnitBaseClass {
             }
         }
 
-        return -1;
+        return starting ? this.instr!.pc : -1;
     }
 
     computeValue() {
@@ -494,7 +498,7 @@ class Graphics {
                 '<td>', String(row[1].instr), '</td>',
                 '<td>', row[1].dst, '</td>',
                 '<td>', String(row[1].value), '</td>',
-                '<td', row[1].ready ? ' class="busy">' : '>', '</td>',
+                '<td', row[1].ready !== null ? ' class="busy">' : '>', '</td>',
                 '<td>',String(row[1].instr.rowid), '</td>',
                 '</tr>',
             ]);
@@ -694,7 +698,6 @@ class XCache {
             this.mem = <Memory>c.mem;
     }
 
-    //TODO: coccurrent acces issue? see MemoryMGM
     isBusy():boolean {
         return this.working;
     }
@@ -1048,7 +1051,7 @@ class Rob {
             for (let item of me.cb.reverse()) {
                 let tag = item[0], entry = item[1];
                 if (reg === entry.dst) {
-                    if (entry.ready) {
+                    if (entry.ready !== null) {
                         return [entry.value, null];
                     } else {
                         return [0, String(tag)];
@@ -1059,12 +1062,12 @@ class Rob {
         }
     }(this);
 
-    readCDB(cdb: Queue<CdbMessage>): void {
+    readCDB(clock:number, cdb: Queue<CdbMessage>): void {
         for (let msg of cdb) {
             let tag = Number(msg.rsName);
             this.cb.buffer[tag].dst = msg.dst;
             this.cb.buffer[tag].value = msg.result;
-            this.cb.buffer[tag].ready = true;
+            this.cb.buffer[tag].ready = clock;
         }
     }
 
@@ -1074,7 +1077,7 @@ class Rob {
             return -1
 
         let head = this.cb.buffer[this.cb.head];
-        if (!head.ready)
+        if (head.ready === null || head.ready === clock)
             return -1;
 
         if (head.dst === '') {                  // Nothing to do
@@ -1096,7 +1099,7 @@ class RobEntry {
         public instr: RawInstruction,
         public dst: string,
         public value: number = 0,
-            public ready: boolean = false,
+        public ready: number | null = null,
     ){}
 }
 // some spaghetti code from 2AM:w
@@ -1220,7 +1223,7 @@ function setup() {
         [
             [FuKind.ADDER, 'ADDR', safeInt(iaddr.value, 3), {duration: safeInt(iaddrd.value, 2)}],
             [FuKind.MULTIPLIER, 'MULT', safeInt(imult.value, 3), {duration: safeInt(imultd.value, 4)}],
-            [FuKind.MEMORY, 'MEM', 1, {'memMgm': memMgm}],
+            [FuKind.MEMORY, 'MEM', 1, {'memMgm': memMgm, duration: safeInt(iaddrd.value, 2)}],
         ],
         {ints: safeInt(ireg.value), floats: safeInt(freg.value)},
         safeInt(rsize.value, 0),

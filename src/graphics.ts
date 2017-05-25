@@ -141,7 +141,7 @@ class Graphics {
                 '<td>', String(row[1].instr), '</td>',
                 '<td>', row[1].dst, '</td>',
                 '<td>', String(row[1].value), '</td>',
-                '<td', row[1].ready ? ' class="busy">' : '>', '</td>',
+                '<td', row[1].ready !== null ? ' class="busy">' : '>', '</td>',
                 '<td>',String(row[1].instr.rowid), '</td>',
                 '</tr>',
             ]);

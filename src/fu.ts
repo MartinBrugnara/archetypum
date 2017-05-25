@@ -155,17 +155,20 @@ class MemoryFU extends FunctionalUnitBaseClass {
     private memMgm:MemoryMGM;
     private waiting:boolean=false;
 
+    // Duration iif to compute addr & offset
+    startTime: number | null = null;
+
+    readonly duration:number = 0;
+
     constructor(name: string, kwargs: KwArgs) {
         super(FuKind.MEMORY, name);
         this.memMgm = kwargs['memMgm'];
+        this.duration = kwargs['duration'];
     }
-
-    // Duration iif to compute addr & offset
-    duration = 1; // TODO: get from config
-    startTime: number | null = null;
 
     /* Returns rowid (pc) when exec start, -1 otherwise */
     execute(clockTime: number): number {
+        let starting = false;
         if (
             this.isBusy() && this.isReady() &&
             (!this.endTime || this.endTime < clockTime) &&
@@ -174,13 +177,13 @@ class MemoryFU extends FunctionalUnitBaseClass {
         ) {
             // Start execution
             this.waiting = true;
-            return this.instr!.pc
+            starting = true;
         }
 
         if (this.waiting && (clockTime >= (
                 this.issuedTime + Number(ISSUE_EXEC_DELAY)) +
                 // If offset, pay "addition" time
-                (this.instr!.vk !== 0 ? this.duration : 0)
+                (this.instr!.op === Op.STORE && this.instr!.vk !== 0 ? this.duration : 0)
             )
         ) {
             let done=false;
@@ -205,7 +208,7 @@ class MemoryFU extends FunctionalUnitBaseClass {
             }
         }
 
-        return -1;
+        return starting ? this.instr!.pc : -1;
     }
 
     computeValue() {

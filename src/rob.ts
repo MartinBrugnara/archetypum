@@ -17,7 +17,7 @@ class Rob {
             for (let item of me.cb.reverse()) {
                 let tag = item[0], entry = item[1];
                 if (reg === entry.dst) {
-                    if (entry.ready) {
+                    if (entry.ready !== null) {
                         return [entry.value, null];
                     } else {
                         return [0, String(tag)];
@@ -28,12 +28,12 @@ class Rob {
         }
     }(this);
 
-    readCDB(cdb: Queue<CdbMessage>): void {
+    readCDB(clock:number, cdb: Queue<CdbMessage>): void {
         for (let msg of cdb) {
             let tag = Number(msg.rsName);
             this.cb.buffer[tag].dst = msg.dst;
             this.cb.buffer[tag].value = msg.result;
-            this.cb.buffer[tag].ready = true;
+            this.cb.buffer[tag].ready = clock;
         }
     }
 
@@ -43,7 +43,7 @@ class Rob {
             return -1
 
         let head = this.cb.buffer[this.cb.head];
-        if (!head.ready)
+        if (head.ready === null || head.ready === clock)
             return -1;
 
         if (head.dst === '') {                  // Nothing to do
@@ -65,6 +65,6 @@ class RobEntry {
         public instr: RawInstruction,
         public dst: string,
         public value: number = 0,
-            public ready: boolean = false,
+        public ready: number | null = null,
     ){}
 }
