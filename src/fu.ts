@@ -47,7 +47,7 @@ class FunctionalUnitBaseClass implements FunctionalUnit {
         return -1;
     }
 
-    computeValue(): boolean {
+    computeValue(): void {
         throw new Error('Implement in child');
     }
 
@@ -153,6 +153,7 @@ class MemoryFU extends FunctionalUnitBaseClass {
      */
 
     private memMgm:MemoryMGM;
+    private waiting:boolean=false;
 
     constructor(name: string, kwargs: KwArgs) {
         super(FuKind.MEMORY, name);
@@ -193,7 +194,7 @@ class MemoryFU extends FunctionalUnitBaseClass {
                     break
                 case Op.STORE:
                     done = this.memMgm.write(this.name, clockTime, this.instr!.vj, this.instr!.vk);
-                    this.instr!.dst = this.instr!.vk;
+                    this.instr!.dst = String(this.instr!.vk);
                     this.result = this.instr!.vj;
                     break
             }

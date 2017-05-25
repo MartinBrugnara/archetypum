@@ -13,12 +13,12 @@
             regConf: RegConfig,
             robSize: number, // if 0 then disable
             public cache:XCache,
+            public memMgm:MemoryMGM,
             public readonly program:Program
     ) {
         this.REG = new Register(regConf);
         this.FUs = FuFactory(fuConf)
         if (robSize) {
-            this.MemMGM = new
             this.ROB = new Rob(robSize, memMgm);
             this.useRob = true;
         }

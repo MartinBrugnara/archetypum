@@ -124,7 +124,8 @@ function setup() {
         {ints: safeInt(ireg.value), floats: safeInt(freg.value)},
         safeInt(rsize.value, 0),
         CACHE,
-        parse(raw_src.value),
+        memMgm,
+        parse(raw_src.value)
     )
 
     let g = new Graphics(emu);

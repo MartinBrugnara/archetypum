@@ -3,6 +3,7 @@ class Rob {
 
     constructor(size: number, private memMgm:MemoryMGM) {
         this.cb = new CircularBuffer<RobEntry>(size)
+        memMgm.rob = this;
     }
 
     isFull = ():boolean => this.cb.isFull();
@@ -51,7 +52,7 @@ class Rob {
             reg.regs[head.dst] = head.value;
             return this.cb.pop()!.instr.rowid;
         } else {                                // Is memory: write.
-            if (this.memMgm.write('ROB', clock, head.dst, head.value, true))
+            if (this.memMgm.write('ROB', clock, Number(head.dst), head.value, true))
                 return this.cb.pop()!.instr.rowid;
         }
 

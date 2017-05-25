@@ -83,17 +83,28 @@ class XCache {
 
     protected mem: Memory;
 
+    private working: boolean=false;
+
     constructor(c: CacheConf) {
         if (c['mem'] !== undefined)
             this.mem = <Memory>c.mem;
     }
 
+    //TODO: coccurrent acces issue? see MemoryMGM
+    isBusy():boolean {
+        return this.working;
+    }
+
     read(clock: number, loc:number): number | null {
-        return this.mem.read(clock, loc);
+        let value = this.mem.read(clock, loc)
+        this.working = value === null;
+        return value;
     }
 
     write(clock: number, loc:number, value:number): boolean {
-        return this.mem.write(clock, loc, value);
+        let finished = this.mem.write(clock, loc, value);
+        this.working =  !finished;
+        return finished;
     }
 }
 XCacheMap["no-cache"] = (c: CacheConf) => new XCache(c);
@@ -266,19 +277,20 @@ class MemoryMGM {
      * it should abstract away cache and ROB possible existence.
      */
 
+    public rob:Rob; // assigned on build by Rob constructor
     private state: MgmIntState = MgmIntState.FREE;
-    private currentFU:string = '';
+    private currFU:string = '';
 
     constructor(private cache: XCache, private useRob:boolean){}
 
     read(funame:string, clock:number, loc:number): number | null {
         if (this.state !== MgmIntState.FREE && funame !== this.currFU)
-            return;
+            return null;
 
         // First check in ROB
         if (this.useRob) {
-            for (let entry of this.rob.reverse()) {
-                if (lock === entry[1].dst)
+            for (let entry of this.rob.cb.reverse()) {
+                if (String(loc) === entry[1].dst)
                     return entry[1].value;
             }
         }
@@ -319,5 +331,7 @@ class MemoryMGM {
                 this.state = MgmIntState.FREE;
             return this.state === MgmIntState.FREE;
         }
+
+        return false;
     }
 }

@@ -70,12 +70,12 @@ class CircularBuffer<T> {
             regConf: RegConfig,
             robSize: number, // if 0 then disable
             public cache:XCache,
+            public memMgm:MemoryMGM,
             public readonly program:Program
     ) {
         this.REG = new Register(regConf);
         this.FUs = FuFactory(fuConf)
         if (robSize) {
-            this.MemMGM = new
             this.ROB = new Rob(robSize, memMgm);
             this.useRob = true;
         }
@@ -182,7 +182,7 @@ class FunctionalUnitBaseClass implements FunctionalUnit {
         return -1;
     }
 
-    computeValue(): boolean {
+    computeValue(): void {
         throw new Error('Implement in child');
     }
 
@@ -288,6 +288,7 @@ class MemoryFU extends FunctionalUnitBaseClass {
      */
 
     private memMgm:MemoryMGM;
+    private waiting:boolean=false;
 
     constructor(name: string, kwargs: KwArgs) {
         super(FuKind.MEMORY, name);
@@ -328,7 +329,7 @@ class MemoryFU extends FunctionalUnitBaseClass {
                     break
                 case Op.STORE:
                     done = this.memMgm.write(this.name, clockTime, this.instr!.vj, this.instr!.vk);
-                    this.instr!.dst = this.instr!.vk;
+                    this.instr!.dst = String(this.instr!.vk);
                     this.result = this.instr!.vj;
                     break
             }
@@ -686,17 +687,28 @@ class XCache {
 
     protected mem: Memory;
 
+    private working: boolean=false;
+
     constructor(c: CacheConf) {
         if (c['mem'] !== undefined)
             this.mem = <Memory>c.mem;
     }
 
+    //TODO: coccurrent acces issue? see MemoryMGM
+    isBusy():boolean {
+        return this.working;
+    }
+
     read(clock: number, loc:number): number | null {
-        return this.mem.read(clock, loc);
+        let value = this.mem.read(clock, loc)
+        this.working = value === null;
+        return value;
     }
 
     write(clock: number, loc:number, value:number): boolean {
-        return this.mem.write(clock, loc, value);
+        let finished = this.mem.write(clock, loc, value);
+        this.working =  !finished;
+        return finished;
     }
 }
 XCacheMap["no-cache"] = (c: CacheConf) => new XCache(c);
@@ -869,19 +881,20 @@ class MemoryMGM {
      * it should abstract away cache and ROB possible existence.
      */
 
+    public rob:Rob; // assigned on build by Rob constructor
     private state: MgmIntState = MgmIntState.FREE;
-    private currentFU:string = '';
+    private currFU:string = '';
 
     constructor(private cache: XCache, private useRob:boolean){}
 
     read(funame:string, clock:number, loc:number): number | null {
         if (this.state !== MgmIntState.FREE && funame !== this.currFU)
-            return;
+            return null;
 
         // First check in ROB
         if (this.useRob) {
-            for (let entry of this.rob.reverse()) {
-                if (lock === entry[1].dst)
+            for (let entry of this.rob.cb.reverse()) {
+                if (String(loc) === entry[1].dst)
                     return entry[1].value;
             }
         }
@@ -922,6 +935,8 @@ class MemoryMGM {
                 this.state = MgmIntState.FREE;
             return this.state === MgmIntState.FREE;
         }
+
+        return false;
     }
 }
  class Queue<T> {
@@ -1019,6 +1034,7 @@ class Rob {
 
     constructor(size: number, private memMgm:MemoryMGM) {
         this.cb = new CircularBuffer<RobEntry>(size)
+        memMgm.rob = this;
     }
 
     isFull = ():boolean => this.cb.isFull();
@@ -1067,7 +1083,7 @@ class Rob {
             reg.regs[head.dst] = head.value;
             return this.cb.pop()!.instr.rowid;
         } else {                                // Is memory: write.
-            if (this.memMgm.write('ROB', clock, head.dst, head.value, true))
+            if (this.memMgm.write('ROB', clock, Number(head.dst), head.value, true))
                 return this.cb.pop()!.instr.rowid;
         }
 
@@ -1209,7 +1225,8 @@ function setup() {
         {ints: safeInt(ireg.value), floats: safeInt(freg.value)},
         safeInt(rsize.value, 0),
         CACHE,
-        parse(raw_src.value),
+        memMgm,
+        parse(raw_src.value)
     )
 
     let g = new Graphics(emu);
