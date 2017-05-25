@@ -259,3 +259,62 @@ class NWayCache extends XCache {
     }
 }
 XCacheMap["nwayset"] = (c: CacheConf) => new NWayCache(c);
+
+class MemoryMGM extends {
+    /* MemoryMGM is the main interface to the memory:
+     * it should abstract away cache and ROB possible existence.
+     */
+
+    enum State {FREE, READ, WRITE};
+    private state:INT_STATE = State.FREE;
+
+    read(funame:string, clock:number, loc:number): number | null {
+        if (this.state !== State.FREE && funame !== this.currFU)
+
+            return;
+        // First check in ROB
+        if (this.useRob) {
+            for (let entry of this.rob.reverse()) {
+                if (lock === entry[1].dst)
+                    return entry[1].value;
+            }
+        }
+
+        // Go to mem, via cache, if not already busy.
+        if (!this.cache.isBusy()) {
+            this.state = State.READ;
+            this.currFU = funame;
+        }
+
+        if (this.state === State.READ) {
+            let value = this.cache.read(clock, loc);
+            if (value !== null)
+                this.state = State.FREE;
+            return value;
+        }
+
+        // Default
+        return null;
+    }
+
+    write(funame:string, clock:number, loc:number, value:number, commit:boolean=false): boolean {
+        if (this.state !== State.FREE && funame !== this.currFU)
+            return;
+
+        // Calling from FU: do nothing;
+        if (this.useRob && !commit)
+            return true;
+
+        // Actually write to mem, via cache, if not already busy.
+        if (!this.cache.isBusy()) {
+            this.state = State.WRITE;
+            this.currFU = funame;
+        }
+
+        if (this.state === State.WRITE) {
+            if (this.cache.write(clock, loc, value))
+                this.state = State.FREE;
+            return this.state === State.FREE;
+        }
+    }
+}

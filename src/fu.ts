@@ -47,7 +47,7 @@ class FunctionalUnitBaseClass implements FunctionalUnit {
         return -1;
     }
 
-    computeValue(): void {
+    computeValue(): boolean {
         throw new Error('Implement in child');
     }
 
@@ -145,69 +145,66 @@ function FuFactory(conf: FuConfig): FunctionalUnit[] {
     return fus;
 }
 
+class MemoryFU extends FunctionalUnitBaseClass {
+    /* MemoryFU is responsible for:
+     * - computing actual address (and simulate latency here)
+     * - read / write to memory manager (external component)
+     *   and wait until completes.
+     */
 
-
-class MemoryMGM extends FunctionalUnitBaseClass {
-    readonly duration = 0;
-    private cache: XCache;
-    private isComputing: boolean=false;
-
-    constructor(name: string, kwargs: KwArgs) {
-        super(FuKind.MEMORY, name);
-        this.cache = <XCache>kwargs['cache'];
-    }
-
-    computeValue() {
-        console.error('I should never be invoked');
-    }
+    // Duration iif to compute addr & offset
+    duration = 1; // TODO: get from config
+    startTime: number | null = null;
 
     /* Returns rowid (pc) when exec start, -1 otherwise */
     execute(clockTime: number): number {
-        if (this.isBusy() && this.isReady() &&
-            (clockTime >= (this.issuedTime + Number(ISSUE_EXEC_DELAY)))) {
+        if (
+            this.isBusy() && this.isReady() &&
+            (!this.endTime || this.endTime < clockTime) &&
+            (clockTime >= (this.issuedTime + Number(ISSUE_EXEC_DELAY))) &&
+            !this.waiting
+        ) {
+            // Start execution
+            this.waiting = true;
+            return this.instr!.pc
+        }
 
-            if (this.endTime >= clockTime)
-                return -1; // result already computed, waiting 2 write.
-
-            let done:boolean = false;
+        if (this.waiting && (clockTime >= (
+                this.issuedTime + Number(ISSUE_EXEC_DELAY)) +
+                // If offset, pay "addition" time
+                (this.instr!.vk !== 0 ? this.duration : 0)
+            )
+        ) {
+            let done=false;
             switch (this.instr!.op) {
                 case Op.LOAD:
-                    let value = this.cache.read(clockTime, this.instr!.vk + this.instr!.vj);
-                    if (value !== null) {
-                        this.result = value
+                    let value = this.memMgm.read(this.name, clockTime, this.instr!.vj + this.instr!.vk);
+                    if (value !== null) { // done
+                        this.result = value;
                         done = true;
                     }
-                    break;
+                    break
                 case Op.STORE:
-                    done = this.cache.write(clockTime, this.instr!.vk, this.instr!.vj);
-                    break;
+                    done = this.memMgm.write(this.name, clockTime, this.instr!.vj, this.instr!.vk))
+                    this.instr!.dst = this.instr!.vk;
+                    this.result = this.instr!.vj;
+                    break
             }
 
-            if (done) this.endTime = clockTime + Number(EXEC_WRITE_DELAY);
-
-            if (!this.isComputing) {
-                this.isComputing = true;
-                return this.instr!.pc
+            if (done) {
+                this.endTime = clockTime + Number(EXEC_WRITE_DELAY);
+                this.waiting = false;
             }
         }
+
         return -1;
     }
 
-    /* Return rowid (pc) when it writes a result, -1 otherwise. */
-    /* NOTE: endTime is considered as minEndTime (account for delays).
-     * We relay on cache output to compute the actual exec time. */
-    writeResult(clockTime: number, cdb: Queue<CdbMessage>): number {
-        if (this.endTime !== clockTime) return -1;
-
-        if (this.instr!.op === Op.LOAD)
-            cdb.push(new CdbMessage(this.instr!.tag || this.name, this.result, this.instr!.dst));
-
-        this.isComputing = false;
-        this.endTime = -1;
-
-        let pc = this.instr!.pc;
-        this.instr = null;
-        return pc;
+    computeValue() {
+        /* If any value has been read is already in results.
+         * In case of STORE, nothing has to be returned.
+         * --> do nothing.
+         */
     }
 }
-FuMap[FuKind.MEMORY] = (name:string, kwargs: KwArgs) => new MemoryMGM(name, kwargs);
+FuMap[FuKind.MEMORY] = (name:string, kwargs: KwArgs) => new MemoryFU(name, kwargs);

@@ -30,27 +30,55 @@ class Rob {
     readCDB(cdb: Queue<CdbMessage>): void {
         for (let msg of cdb) {
             let tag = Number(msg.rsName);
+            this.cb.buffer[tag].dst = msg.dst;
             this.cb.buffer[tag].value = msg.result;
             this.cb.buffer[tag].ready = true;
         }
     }
 
     // return pc of committed instruction or -1
-    commit(reg: Register): number {
-        if (!this.isEmpty() && this.cb.buffer[this.cb.head].ready) {
-            let data = this.cb.pop()!;
-            reg.regs[data.dst] = data.value
-            return data.instr.rowid;
-        }
-        return -1;
-    }
-}
+    commit(reg: Register, mem: MemoryMGM): number {
+        if (!this.isEmpty()) {
+            let head = this.cb.buffer[this.cb.head];
 
-class RobEntry {
-    constructor(
-        public instr: RawInstruction,
-        public dst: string,
-        public value: number = 0,
-        public ready: boolean = false,
-    ){}
-}
+            if (head.dst === '') {
+                if (head.ready)         // Nothing to do
+                    return this.cb.pop()!.instr.rowid;
+            } else if (head.dst in reg.regs) {
+                if (head.ready) {       // Is Reg and ready: save to reg
+                    reg.regs[head.dst] = head.value;
+                    return this.cb.pop()!.instr.rowid;
+                }
+            } else {
+                // is memory: try to write to memory
+                if (!memory.isBusy())
+                    let memory.tryIssue()
+            }
+
+
+
+            && this.cb.buffer[this.cb.head].ready) {
+                // TODO: wat ? fix me
+                let data = this.cb.pop()!;
+                if (data.dst in reg.regs) {
+                    reg.regs[data.dst] = data.value
+                    return data.instr.rowid;
+                } else {
+                    return
+                }
+
+                // Check if something to write
+
+
+                return -1;
+            }
+        }
+
+        class RobEntry {
+            constructor(
+                public instr: RawInstruction,
+                public dst: string,
+                public value: number = 0,
+                public ready: boolean = false,
+            ){}
+        }
