@@ -1,11 +1,12 @@
 class Spec {
     speculative: boolean = false;
 
-    nextPc(instr: Instruction, flags: boolean[]): {
+    nextPc(instr: RawInstruction, flags: boolean[]): number {
+        return Number(instr.src0);
     }
 
-    real (instr: Instruction, flags: boolean[]): {
-        if ((Op.JZ && flages[Flag.ZF]) || (Op.JNZ && !flages[Flag.ZF]))
+    real (instr: RawInstruction, flags: boolean[]): number {
+        if ((Op.JZ && flags[Flag.ZF]) || (Op.JNZ && !flags[Flag.ZF]))
             return Number(instr.src0);
         else
             return instr.rowid + 1;
@@ -23,7 +24,7 @@ class Spec {
 
 
 class NoSpec extends Spec {
-    nextPc(instr: Instruction, flags: boolean[]): number {
+    nextPc(instr: RawInstruction, flags: boolean[]): number {
         return this.real(instr, flags);
     }
 }
@@ -31,7 +32,7 @@ class NoSpec extends Spec {
 class YesSpec extends Spec {
     speculative = true;
 
-    nextPc(instr: Instruction, flags: boolean[]): number {
+    nextPc(instr: RawInstruction, flags: boolean[]): number {
         return Number(instr.src0);
     }
 }

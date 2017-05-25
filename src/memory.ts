@@ -148,7 +148,7 @@ class NWayCache extends XCache {
     }
 
     flush() {
-        super();
+        super.flush();
         this.writing = null;
         this.currentOpComplete = -1;
         this.miss = false;

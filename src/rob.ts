@@ -1,7 +1,7 @@
 class Rob {
     cb:CircularBuffer<RobEntry>;
 
-    constructor(size: number, private memMgm:MemoryMGM, private IU:Spec) {
+    constructor(private readonly size: number, private memMgm:MemoryMGM, private IU:Spec) {
         this.cb = new CircularBuffer<RobEntry>(size)
         memMgm.rob = this;
     }
@@ -48,7 +48,7 @@ class Rob {
     }
 
     // return uid of committed istruction, if any, -1 otherwise
-    commit(clock: number, reg: Register): number {
+    commit(clock: number, reg: Register): CommitResponse {
         if (this.isEmpty())
             return new CommitResponse();
 
@@ -65,15 +65,16 @@ class Rob {
             return new CommitResponse(this.cb.pop()!.uid, this.IU.validateChoice(head, reg.FLAGS));
 
         if (head.dst === '') {                  // Nothing to do
-            return this.cb.pop()!.instr.rowid;
+            return new CommitResponse(this.cb.pop()!.uid);
         } else if (head.dst in reg.regs) {      // Is reg: save to reg
             reg.regs[head.dst] = head.value;
-            return this.cb.pop()!.instr.uid;
             return new CommitResponse(this.cb.pop()!.uid);
         } else {                                // Is memory: write.
             if (this.memMgm.write('ROB', clock, Number(head.dst), head.value, true))
                 return new CommitResponse(this.cb.pop()!.uid);
         }
+
+        return new CommitResponse();
     }
 }
 
@@ -82,7 +83,7 @@ class RobEntry {
         public instr: RawInstruction,
         public dst: string,
 
-        public uid: number = null;
+        public uid: number = -1,
 
         public value: number = 0,
         public ready: number | null = null,

@@ -9,7 +9,7 @@ interface FunctionalUnit {
     flush(): void;
 }
 
-enum FuKind {ADDER, MULTIPLIER, MEMORY}
+enum FuKind {ADDER, MULTIPLIER, MEMORY, IU}
 type KwArgs = {[key:string]: any}
 let FuMap: {[key:number]: (name:string, kwargs: KwArgs) => FunctionalUnit} = {}
 
@@ -226,11 +226,9 @@ class MemoryFU extends FunctionalUnitBaseClass {
     }
 
     flush(): void {
-        super();
+        super.flush();
         this.waiting = false;
         this.startTime = null;
-        // clean also cache & memory state (not content)
-        this.kwargs.mem.flush();
         this.memMgm.flush();
     }
 }

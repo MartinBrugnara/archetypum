@@ -1,5 +1,4 @@
 class CircularBuffer<T> {
-
     buffer:T[];
     head:number = 0;
     tail:number = 0;
@@ -55,7 +54,7 @@ class CircularBuffer<T> {
  class CdbMessage {
     constructor(public rsName: string, public result: number, public dst: string) {}
 }
- class Emulator {
+class Emulator {
     public clock:number = 0;
     public pc:number = 0;
     public uid:number = 0;
@@ -69,18 +68,18 @@ class CircularBuffer<T> {
     public hist:Program = [];
 
     constructor(
-            fuConf: FuConfig,
-            regConf: RegConfig,
-            robSize: number, // if 0 then disable
-            public cache:XCache,
-            public memMgm:MemoryMGM,
-            public IU:Spec,
-            public readonly program:Program
+        fuConf: FuConfig,
+        regConf: RegConfig,
+        robSize: number, // if 0 then disable
+        public cache:XCache,
+        public memMgm:MemoryMGM,
+        public IU:Spec,
+        public readonly program:Program
     ) {
         this.REG = new Register(regConf);
         this.FUs = FuFactory(fuConf)
         if (robSize) {
-            this.ROB = new Rob(robSize, memMgm);
+            this.ROB = new Rob(robSize, memMgm, IU);
             this.useRob = true;
         }
     }
@@ -96,6 +95,8 @@ class CircularBuffer<T> {
 
             if (!this.useRob || !this.ROB.isFull()) {
                 if (this.useRob) inst.tag = this.ROB.nextTag();
+                let issued = false;
+                let name = '';
 
                 // TODO: check me
                 if (OpKindMap[inst.op] === FuKind.IU) {
@@ -113,11 +114,13 @@ class CircularBuffer<T> {
                         re.value = this.pc; // (possibly wrongly speculated value)
                         issued = true
                     }
+                    name = 'IU';
                 } else {
                     for (let fu of this.FUs) {             // find free FU
                         if (fu.tryIssue(this.clock, inst)) {
                             issued = true;
                             this.pc++;
+                            name = fu.name;
                             break;
                         }
                     }
@@ -129,7 +132,7 @@ class CircularBuffer<T> {
                     if (this.useRob) {
                         this.ROB.push(re);
                     } else {
-                        this.REG.setProducer(inst, fu.name);
+                        this.REG.setProducer(inst, name);
                     }
                     this.uid++;
                 }
@@ -150,12 +153,11 @@ class CircularBuffer<T> {
         if (this.useRob) {
             this.ROB.readCDB(this.clock, this.CDB);
             let res = this.ROB.commit(this.clock, this.REG);
-            if (res.uid !== -1) this.hist[rowid].committed = this.clock;
+            if (res.uid !== -1) this.hist[res.uid].committed = this.clock;
             if (res.flush !== -1) {
                 this.ROB.flush();
                 for (let fu of this.FUs) fu.flush();
                 this.memMgm.flush();
-                // TODO: next id
                 this.pc = res.flush;
             }
         } else {
@@ -180,7 +182,7 @@ interface FunctionalUnit {
     flush(): void;
 }
 
-enum FuKind {ADDER, MULTIPLIER, MEMORY}
+enum FuKind {ADDER, MULTIPLIER, MEMORY, IU}
 type KwArgs = {[key:string]: any}
 let FuMap: {[key:number]: (name:string, kwargs: KwArgs) => FunctionalUnit} = {}
 
@@ -259,6 +261,12 @@ class FunctionalUnitBaseClass implements FunctionalUnit {
             }
         }
     }
+
+    flush(): void {
+        this.instr = null;
+        this.issuedTime = -1;
+        this.endTime = -1;
+    }
 }
 
 class Adder extends FunctionalUnitBaseClass {
@@ -270,7 +278,7 @@ class Adder extends FunctionalUnitBaseClass {
             this.duration = kwargs.duration;
     }
 
-    computeValue() {
+    computeValue(): void {
         switch (this.instr!.op) {
             case Op.ADD:
                 this.result = this.instr!.vj + this.instr!.vk;
@@ -292,7 +300,7 @@ class Multiplier extends FunctionalUnitBaseClass {
             this.duration = kwargs.duration;
     }
 
-    computeValue() {
+    computeValue(): void {
         switch (this.instr!.op) {
             case Op.MUL:
                 this.result = this.instr!.vj * this.instr!.vk;
@@ -388,6 +396,13 @@ class MemoryFU extends FunctionalUnitBaseClass {
          * In case of STORE, nothing has to be returned.
          * --> do nothing.
          */
+    }
+
+    flush(): void {
+        super.flush();
+        this.waiting = false;
+        this.startTime = null;
+        this.memMgm.flush();
     }
 }
 FuMap[FuKind.MEMORY] = (name:string, kwargs: KwArgs) => new MemoryFU(name, kwargs);
@@ -688,6 +703,10 @@ class Memory {
         this.writeLatency = c.writeLatency;
     }
 
+    flush() {
+        this.currentOpComplete = -1;
+    }
+
     isBusy() {
         return this.currentOpComplete !== -1;
     }
@@ -765,6 +784,10 @@ class XCache {
         return this.working;
     }
 
+    flush() {
+        this.working = false;
+    }
+
     read(clock: number, loc:number): number | null {
         let value = this.mem.read(clock, loc)
         this.working = value === null;
@@ -808,6 +831,13 @@ class NWayCache extends XCache {
             for (let j=0; j<this.n; j++)
                 this._cache[i].push( [false, 0, 0, false] );
         }
+    }
+
+    flush() {
+        super.flush();
+        this.writing = null;
+        this.currentOpComplete = -1;
+        this.miss = false;
     }
 
     isBusy() {
@@ -953,6 +983,12 @@ class MemoryMGM {
 
     constructor(private cache: XCache, private useRob:boolean){}
 
+    flush() {
+        this.state = MgmIntState.FREE;
+        this.currFU = '';
+        this.cache.flush();
+    }
+
     read(funame:string, clock:number, loc:number): number | null {
         if (this.state !== MgmIntState.FREE && funame !== this.currFU)
             return null;
@@ -1023,7 +1059,7 @@ type RegConfig = {ints:number, floats:number};
 
 type Patcher = (reg: Register, src: string) => [number, string | null];
 
-enum Flag = {
+enum Flag {
     ZF=0,
     // When adding here, add also handler in Rob.setFlags()
     NFLAGS, // must be last item.
@@ -1053,7 +1089,7 @@ class Register {
      * qfunc: given source register returns [value, name/tag]
      * */
     patch(ri: RawInstruction, qfunc: Patcher, uid:number): Instruction {
-        let ins = new Instruction(ri.op, ri.dst, ri.pc, uid);
+        let ins = new Instruction(ri.op, ri.dst, ri.rowid, uid);
 
         let value = parseInt(ri.src0, 10);
         if (isNaN(value)) {                        // then src0 is a reg name
@@ -1109,7 +1145,7 @@ class Register {
 class Rob {
     cb:CircularBuffer<RobEntry>;
 
-    constructor(size: number, private memMgm:MemoryMGM, private IU:Spec) {
+    constructor(private readonly size: number, private memMgm:MemoryMGM, private IU:Spec) {
         this.cb = new CircularBuffer<RobEntry>(size)
         memMgm.rob = this;
     }
@@ -1119,6 +1155,11 @@ class Rob {
     nextTag = ():string => String(this.cb.nextTag());
     push = (r:RobEntry):number => this.cb.push(r);
     pop = ():RobEntry|null => this.cb.pop();
+
+    flush(): void {
+        this.cb = new CircularBuffer<RobEntry>(this.size);
+        this.memMgm.rob = this;
+    }
 
     patcher = function(me: Rob) {
         return function(registry: Register, reg: string): [number, string | null] {
@@ -1151,7 +1192,7 @@ class Rob {
     }
 
     // return uid of committed istruction, if any, -1 otherwise
-    commit(clock: number, reg: Register): number {
+    commit(clock: number, reg: Register): CommitResponse {
         if (this.isEmpty())
             return new CommitResponse();
 
@@ -1168,15 +1209,16 @@ class Rob {
             return new CommitResponse(this.cb.pop()!.uid, this.IU.validateChoice(head, reg.FLAGS));
 
         if (head.dst === '') {                  // Nothing to do
-            return this.cb.pop()!.instr.rowid;
+            return new CommitResponse(this.cb.pop()!.uid);
         } else if (head.dst in reg.regs) {      // Is reg: save to reg
             reg.regs[head.dst] = head.value;
-            return this.cb.pop()!.instr.uid;
             return new CommitResponse(this.cb.pop()!.uid);
         } else {                                // Is memory: write.
             if (this.memMgm.write('ROB', clock, Number(head.dst), head.value, true))
                 return new CommitResponse(this.cb.pop()!.uid);
         }
+
+        return new CommitResponse();
     }
 }
 
@@ -1185,7 +1227,7 @@ class RobEntry {
         public instr: RawInstruction,
         public dst: string,
 
-        public uid: number = null;
+        public uid: number = -1,
 
         public value: number = 0,
         public ready: number | null = null,
@@ -1201,11 +1243,12 @@ class CommitResponse {
 class Spec {
     speculative: boolean = false;
 
-    nextPc(instr: Instruction, flags: boolean[]): {
+    nextPc(instr: RawInstruction, flags: boolean[]): number {
+        return Number(instr.src0);
     }
 
-    real (instr: Instruction, flags: boolean[]): {
-        if ((Op.JZ && flages[Flag.ZF]) || (Op.JNZ && !flages[Flag.ZF]))
+    real (instr: RawInstruction, flags: boolean[]): number {
+        if ((Op.JZ && flags[Flag.ZF]) || (Op.JNZ && !flags[Flag.ZF]))
             return Number(instr.src0);
         else
             return instr.rowid + 1;
@@ -1223,7 +1266,7 @@ class Spec {
 
 
 class NoSpec extends Spec {
-    nextPc(instr: Instruction, flags: boolean[]): number {
+    nextPc(instr: RawInstruction, flags: boolean[]): number {
         return this.real(instr, flags);
     }
 }
@@ -1231,7 +1274,7 @@ class NoSpec extends Spec {
 class YesSpec extends Spec {
     speculative = true;
 
-    nextPc(instr: Instruction, flags: boolean[]): number {
+    nextPc(instr: RawInstruction, flags: boolean[]): number {
         return Number(instr.src0);
     }
 }

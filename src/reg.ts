@@ -2,7 +2,7 @@ type RegConfig = {ints:number, floats:number};
 
 type Patcher = (reg: Register, src: string) => [number, string | null];
 
-enum Flag = {
+enum Flag {
     ZF=0,
     // When adding here, add also handler in Rob.setFlags()
     NFLAGS, // must be last item.
@@ -32,7 +32,7 @@ class Register {
      * qfunc: given source register returns [value, name/tag]
      * */
     patch(ri: RawInstruction, qfunc: Patcher, uid:number): Instruction {
-        let ins = new Instruction(ri.op, ri.dst, ri.pc, uid);
+        let ins = new Instruction(ri.op, ri.dst, ri.rowid, uid);
 
         let value = parseInt(ri.src0, 10);
         if (isNaN(value)) {                        // then src0 is a reg name

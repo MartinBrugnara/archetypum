@@ -1,4 +1,4 @@
- class Emulator {
+class Emulator {
     public clock:number = 0;
     public pc:number = 0;
     public uid:number = 0;
@@ -12,18 +12,18 @@
     public hist:Program = [];
 
     constructor(
-            fuConf: FuConfig,
-            regConf: RegConfig,
-            robSize: number, // if 0 then disable
-            public cache:XCache,
-            public memMgm:MemoryMGM,
-            public IU:Spec,
-            public readonly program:Program
+        fuConf: FuConfig,
+        regConf: RegConfig,
+        robSize: number, // if 0 then disable
+        public cache:XCache,
+        public memMgm:MemoryMGM,
+        public IU:Spec,
+        public readonly program:Program
     ) {
         this.REG = new Register(regConf);
         this.FUs = FuFactory(fuConf)
         if (robSize) {
-            this.ROB = new Rob(robSize, memMgm);
+            this.ROB = new Rob(robSize, memMgm, IU);
             this.useRob = true;
         }
     }
@@ -39,6 +39,8 @@
 
             if (!this.useRob || !this.ROB.isFull()) {
                 if (this.useRob) inst.tag = this.ROB.nextTag();
+                let issued = false;
+                let name = '';
 
                 // TODO: check me
                 if (OpKindMap[inst.op] === FuKind.IU) {
@@ -56,11 +58,13 @@
                         re.value = this.pc; // (possibly wrongly speculated value)
                         issued = true
                     }
+                    name = 'IU';
                 } else {
                     for (let fu of this.FUs) {             // find free FU
                         if (fu.tryIssue(this.clock, inst)) {
                             issued = true;
                             this.pc++;
+                            name = fu.name;
                             break;
                         }
                     }
@@ -72,7 +76,7 @@
                     if (this.useRob) {
                         this.ROB.push(re);
                     } else {
-                        this.REG.setProducer(inst, fu.name);
+                        this.REG.setProducer(inst, name);
                     }
                     this.uid++;
                 }
@@ -93,12 +97,11 @@
         if (this.useRob) {
             this.ROB.readCDB(this.clock, this.CDB);
             let res = this.ROB.commit(this.clock, this.REG);
-            if (res.uid !== -1) this.hist[rowid].committed = this.clock;
+            if (res.uid !== -1) this.hist[res.uid].committed = this.clock;
             if (res.flush !== -1) {
                 this.ROB.flush();
                 for (let fu of this.FUs) fu.flush();
                 this.memMgm.flush();
-                // TODO: next id
                 this.pc = res.flush;
             }
         } else {
