@@ -26,7 +26,7 @@ class Instruction {
     constructor(
         public op: Op,                     // Operation
         public dst: string,                // destination register (only REG)
-        public pc: number,
+        public pc: number,                 // Since ROB is UID
 
         public vj: number = 0,   // First source operand value
         public vk: number = 0,   // Seconds source operand value

@@ -1,12 +1,15 @@
  class Emulator {
     public clock:number = 0;
     public pc:number = 0;
+    public uid:number = 0;
 
     REG:Register;
     FUs:FunctionalUnit[];
     CDB:Queue<CdbMessage>;
     ROB:Rob;
     useRob:boolean = false;
+
+    public hist:Program = [];
 
     constructor(
             fuConf: FuConfig,
@@ -31,20 +34,22 @@
         if (this.pc < this.program.length) {       // If code then issue
             let rawInst = this.program[this.pc];
 
-            let inst = this.REG.patch(rawInst, this.useRob ? this.ROB.patcher : this.REG.patcher);
+            let inst = this.REG.patch(rawInst, this.useRob ? this.ROB.patcher : this.REG.patcher, this.uid);
 
             let issued:boolean = false;
             if (!this.useRob || !this.ROB.isFull()) {
                 if (this.useRob) inst.tag = this.ROB.nextTag();
                 for (let fu of this.FUs) {             // find free FU
                     if (fu.tryIssue(this.clock, inst)) {
-                        this.program[this.pc].issued = this.clock;
+                        this.hist.push(rawInst);
+                        this.hist[this.uid].issued = this.clock;
                         if (this.useRob) {
                             this.ROB.push(new RobEntry(rawInst, rawInst.dst));
                         } else {
                             this.REG.setProducer(inst, fu.name);
                         }
                         this.pc++;
+                        this.uid++;
                         break;
                     }
                 }
@@ -53,19 +58,19 @@
 
         for (let fu of this.FUs) {
             let rowid = fu.execute(this.clock);
-            if (rowid >= 0) this.program[rowid].executed = this.clock;
+            if (rowid >= 0) this.hist[rowid].executed = this.clock;
         }
 
         for (let fu of this.FUs) {
             let rowid = fu.writeResult(this.clock, this.CDB);
-            if (rowid >= 0) this.program[rowid].written = this.clock;
+            if (rowid >= 0) this.hist[rowid].written = this.clock;
         }
 
         for (let fu of this.FUs) fu.readCDB(this.CDB);
         if (this.useRob) {
             this.ROB.readCDB(this.clock, this.CDB);
             let rowid = this.ROB.commit(this.clock, this.REG);
-            if (rowid !== -1) this.program[rowid].committed = this.clock;
+            if (rowid !== -1) this.hist[rowid].committed = this.clock;
             // SPEC: handle here PC & flush()
         } else {
             this.REG.readCDB(this.CDB);
@@ -74,6 +79,7 @@
         // if all fu are not busy end
         for (let fu of this.FUs) if (fu.isBusy()) return true;
         if (this.useRob && !this.ROB.isEmpty()) return true;
+
         return this.pc < this.program.length;
     }
 }

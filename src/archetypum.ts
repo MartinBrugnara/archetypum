@@ -58,12 +58,15 @@ class CircularBuffer<T> {
  class Emulator {
     public clock:number = 0;
     public pc:number = 0;
+    public uid:number = 0;
 
     REG:Register;
     FUs:FunctionalUnit[];
     CDB:Queue<CdbMessage>;
     ROB:Rob;
     useRob:boolean = false;
+
+    public hist:Program = [];
 
     constructor(
             fuConf: FuConfig,
@@ -88,20 +91,22 @@ class CircularBuffer<T> {
         if (this.pc < this.program.length) {       // If code then issue
             let rawInst = this.program[this.pc];
 
-            let inst = this.REG.patch(rawInst, this.useRob ? this.ROB.patcher : this.REG.patcher);
+            let inst = this.REG.patch(rawInst, this.useRob ? this.ROB.patcher : this.REG.patcher, this.uid);
 
             let issued:boolean = false;
             if (!this.useRob || !this.ROB.isFull()) {
                 if (this.useRob) inst.tag = this.ROB.nextTag();
                 for (let fu of this.FUs) {             // find free FU
                     if (fu.tryIssue(this.clock, inst)) {
-                        this.program[this.pc].issued = this.clock;
+                        this.hist.push(rawInst);
+                        this.hist[this.uid].issued = this.clock;
                         if (this.useRob) {
                             this.ROB.push(new RobEntry(rawInst, rawInst.dst));
                         } else {
                             this.REG.setProducer(inst, fu.name);
                         }
                         this.pc++;
+                        this.uid++;
                         break;
                     }
                 }
@@ -110,19 +115,19 @@ class CircularBuffer<T> {
 
         for (let fu of this.FUs) {
             let rowid = fu.execute(this.clock);
-            if (rowid >= 0) this.program[rowid].executed = this.clock;
+            if (rowid >= 0) this.hist[rowid].executed = this.clock;
         }
 
         for (let fu of this.FUs) {
             let rowid = fu.writeResult(this.clock, this.CDB);
-            if (rowid >= 0) this.program[rowid].written = this.clock;
+            if (rowid >= 0) this.hist[rowid].written = this.clock;
         }
 
         for (let fu of this.FUs) fu.readCDB(this.CDB);
         if (this.useRob) {
             this.ROB.readCDB(this.clock, this.CDB);
             let rowid = this.ROB.commit(this.clock, this.REG);
-            if (rowid !== -1) this.program[rowid].committed = this.clock;
+            if (rowid !== -1) this.hist[rowid].committed = this.clock;
             // SPEC: handle here PC & flush()
         } else {
             this.REG.readCDB(this.CDB);
@@ -131,6 +136,7 @@ class CircularBuffer<T> {
         // if all fu are not busy end
         for (let fu of this.FUs) if (fu.isBusy()) return true;
         if (this.useRob && !this.ROB.isEmpty()) return true;
+
         return this.pc < this.program.length;
     }
 }
@@ -359,6 +365,7 @@ class Graphics {
 
     clk: HTMLElement = document.getElementById('clock')!;
     src: HTMLElement = document.getElementById('sourcecode')!;
+    scexec: HTMLElement = document.getElementById('scexec')!;
     rs: HTMLElement = document.getElementById('rs')!;
     reg: HTMLElement = document.getElementById('reg')!;
     cache: HTMLElement = document.getElementById('cache')!;
@@ -369,6 +376,7 @@ class Graphics {
     paint(): void {
         this.clk.innerHTML = String(this.emu.clock);
         this.src.innerHTML = this.renderSrc();
+        this.scexec.innerHTML = this.renderExec();
         this.rs.innerHTML = this.renderRS();
         this.reg.innerHTML = this.renderREG();
         this.cache.innerHTML = this.renderCache();
@@ -380,6 +388,22 @@ class Graphics {
 
         let html:string[][] = [];
         for (let i of this.emu.program) {
+            html.push([
+                '<tr',
+                    (this.emu.pc === rowid ? ' class="current"' : ''),
+                    '>',
+                    '<td>', String(rowid++), '</td>',
+                    '<td>', i.toString(), '</td>',
+            ]);
+        }
+        return Array.prototype.concat.apply([], html).join('');
+    }
+
+    renderExec(): string {
+        let rowid = 0;
+
+        let html:string[][] = [];
+        for (let i of this.emu.hist) {
             html.push([
                 '<tr',
                     (this.emu.pc === rowid ? ' class="current"' : ''),
@@ -545,7 +569,7 @@ class Instruction {
     constructor(
         public op: Op,                     // Operation
         public dst: string,                // destination register (only REG)
-        public pc: number,
+        public pc: number,                 // Since ROB is UID
 
         public vj: number = 0,   // First source operand value
         public vk: number = 0,   // Seconds source operand value
@@ -978,8 +1002,8 @@ type Patcher = (reg: Register, src: string) => [number, string | null];
     /*
      * qfunc: given source register returns [value, name/tag]
      * */
-    patch(ri: RawInstruction, qfunc: Patcher): Instruction {
-        let ins = new Instruction(ri.op, ri.dst, ri.rowid);
+    patch(ri: RawInstruction, qfunc: Patcher, uid:number): Instruction {
+        let ins = new Instruction(ri.op, ri.dst, uid);
 
         let value = parseInt(ri.src0, 10);
         if (isNaN(value)) {                        // then src0 is a reg name

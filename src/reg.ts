@@ -20,8 +20,8 @@ type Patcher = (reg: Register, src: string) => [number, string | null];
     /*
      * qfunc: given source register returns [value, name/tag]
      * */
-    patch(ri: RawInstruction, qfunc: Patcher): Instruction {
-        let ins = new Instruction(ri.op, ri.dst, ri.rowid);
+    patch(ri: RawInstruction, qfunc: Patcher, uid:number): Instruction {
+        let ins = new Instruction(ri.op, ri.dst, uid);
 
         let value = parseInt(ri.src0, 10);
         if (isNaN(value)) {                        // then src0 is a reg name

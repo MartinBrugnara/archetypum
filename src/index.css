@@ -54,12 +54,10 @@ tbody tr:nth-child(even) {
 }
 
 
-#sourcecode tr.current {
-  background-color: #ffec5e;
-}
+tr.current { background-color: #ffec5e; }
 
-#sourcecode tr td:nth-child(2),
-#sourcecode tr th:nth-child(2) {
+#sourcecode tr *:nth-child(2),
+#scexec tr *:nth-child(2) {
   width: 180px;
 }
 
