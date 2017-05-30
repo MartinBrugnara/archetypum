@@ -1,5 +1,6 @@
 interface FunctionalUnit {
     readonly name:string;
+    readonly kind:FuKind;
     tryIssue(clockTime: number, instr: Instruction): boolean;
     execute(clockTime: number): number;
     writeResult(clockTime: number, cdb: Queue<CdbMessage>): number;

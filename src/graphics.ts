@@ -77,7 +77,7 @@ class Graphics {
                     '<td>', (instr.qj !== null ? instr.qj : ''), '</td>',
                     '<td>', (instr.qk !== null ? instr.qk : '') , '</td>',
                     '<td>', (instr.tag !== null ? instr.tag : ''), '</td>',
-                    '<td>', f.getDue(this.emu.clock), '</td>'
+                    '<td>', f.kind !== FuKind.MEMORY ? f.getDue(this.emu.clock): '', '</td>'
                 ] : [
                     '<td></td><td></td><td></td><td></td><td></td><td></td><td></td>',
                 ]),
