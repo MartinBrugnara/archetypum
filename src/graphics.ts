@@ -76,9 +76,10 @@ class Graphics {
                     '<td>', (instr.qk === null ? String(instr.vk) : ''), '</td>',
                     '<td>', (instr.qj !== null ? instr.qj : ''), '</td>',
                     '<td>', (instr.qk !== null ? instr.qk : '') , '</td>',
-                    '<td>', (instr.tag !== null ? instr.tag : '') , '</td>',
+                    '<td>', (instr.tag !== null ? instr.tag : ''), '</td>',
+                    '<td>', f.getDue(this.emu.clock), '</td>'
                 ] : [
-                    '<td></td><td></td><td></td><td></td><td></td><td></td>',
+                    '<td></td><td></td><td></td><td></td><td></td><td></td><td></td>',
                 ]),
                 ['</tr>'],
             );

@@ -12,7 +12,7 @@ class Register {
     public regs: {[key:string]: number} = {};
     public qi: {[key:string]: string | null} = {};
 
-    public FLAGS: boolean[];
+    public FLAGS: boolean[] = [];
 
     constructor(conf:RegConfig){
         for (let i=0; i<conf.ints; i++) {
@@ -25,7 +25,7 @@ class Register {
         }
 
         for (let f=0; f<Flag.NFLAGS; f++)
-            this.FLAGS[f] = false;
+            this.FLAGS.push(false);
     }
 
     /*

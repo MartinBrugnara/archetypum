@@ -7,6 +7,7 @@ interface FunctionalUnit {
     isBusy(): boolean;
     getInstr(): Instruction | null;
     flush(): void;
+    getDue(clockTime: number): string;
 }
 
 enum FuKind {ADDER, MULTIPLIER, MEMORY, IU}
@@ -22,6 +23,13 @@ class FunctionalUnitBaseClass implements FunctionalUnit {
     protected endTime: number = -1;
 
     constructor(readonly kind: FuKind, readonly name: string) {}
+
+    getDue(clockTime: number): string {
+        let due = this.endTime >= 0 ?
+            (this.endTime - clockTime - 1) :
+            this.duration;
+        return String(due);
+    }
 
     getInstr(): Instruction | null {
         return this.instr;
