@@ -26,7 +26,7 @@ class FunctionalUnitBaseClass implements FunctionalUnit {
     constructor(readonly kind: FuKind, readonly name: string) {}
 
     getDue(clockTime: number): string {
-        let due = this.endTime >= 0 ?
+        let due = this.endTime >= clockTime?
             (this.endTime - clockTime - 1) :
             this.duration;
         return String(due);

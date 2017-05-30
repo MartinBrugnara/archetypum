@@ -44,11 +44,11 @@ class Emulator {
 
                 // TODO: check me
                 if (OpKindMap[inst.op] === FuKind.IU) {
-                    if (inst.op === Op.JMP) {
-                        this.pc = inst.vj;
-                        re.ready = this.clock; // TODO: reconsider +1
-                        issued = true;
-                    } else if (this.IU.speculative || (!this.IU.speculative && this.ROB.isEmpty())) {
+                    if (
+                            this.IU.speculative ||
+                            (!this.IU.speculative && this.ROB.isEmpty()) ||
+                            inst.op === Op.JMP
+                    ) {
                         this.pc = this.IU.nextPc(rawInst, this.REG.FLAGS);
                         // TODO: reconsider +1
                         /* Not tech correct, but since we flush from top only is OK.
@@ -56,7 +56,7 @@ class Emulator {
                          */
                         re.ready = this.clock;
                         re.value = this.pc; // (possibly wrongly speculated value)
-                        issued = true
+                        issued = true;
                     }
                     name = 'IU';
                 } else {
@@ -71,7 +71,7 @@ class Emulator {
                 }
 
                 if (issued) {
-                    this.hist.push(rawInst);
+                    this.hist.push(clone(rawInst));
                     this.hist[this.uid].issued = this.clock;
                     if (this.useRob) {
                         this.ROB.push(re);
@@ -97,11 +97,13 @@ class Emulator {
         if (this.useRob) {
             this.ROB.readCDB(this.clock, this.CDB);
             let res = this.ROB.commit(this.clock, this.REG);
+            console.log(this.clock, "called commit", res);
             if (res.uid !== -1) this.hist[res.uid].committed = this.clock;
             if (res.flush !== -1) {
                 this.ROB.flush();
                 for (let fu of this.FUs) fu.flush();
                 this.memMgm.flush();
+                console.log(this.clock, 'flushing', res.flush);
                 this.pc = res.flush;
             }
         } else {

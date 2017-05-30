@@ -42,9 +42,7 @@ class Graphics {
         let html:string[][] = [];
         for (let i of this.emu.hist) {
             html.push([
-                '<tr',
-                    (this.emu.pc === rowid ? ' class="current"' : ''),
-                    '>',
+                '<tr>',
                     '<td>', String(rowid++), '</td>',
                     '<td>', i.toString(), '</td>',
                     '<td', (i.issued === this.emu.clock ? ' class="new-val"': '') ,'>',

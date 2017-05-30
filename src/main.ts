@@ -12,11 +12,18 @@ STR  42,R0
 LDR  R0,0,R1
 ADD  1,R1,R2
 `
+let ex_3_src = `ADD   1,R0,R0
+SUB R0,5,R1
+JZ 4
+JMP 0
+ADD 42,0,R2
+`
 
 let menu_load: HTMLElement = document.getElementById('menu-load')!;
 let menu_conf: HTMLElement = document.getElementById('menu-conf')!;
 let ex_1: HTMLElement = document.getElementById('ex-1')!;
 let ex_2: HTMLElement = document.getElementById('ex-2')!;
+let ex_3: HTMLElement = document.getElementById('ex-3')!;
 let rdy: HTMLElement = document.getElementById('rdy')!;
 let apply_conf: HTMLElement = document.getElementById('apply_conf')!;
 let raw_src: HTMLInputElement = <HTMLInputElement>document.getElementById('raw-src')!;
@@ -49,6 +56,7 @@ let speed: HTMLInputElement   = <HTMLInputElement>document.getElementById('speed
 function main():void {
     ex_1.onclick = () => raw_src.value = ex_1_src;
     ex_2.onclick = () => raw_src.value = ex_2_src;
+    ex_3.onclick = () => raw_src.value = ex_3_src;
 
     rdy.onclick = () => {
         setup();
