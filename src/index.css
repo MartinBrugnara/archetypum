@@ -130,3 +130,5 @@ tr.current { background-color: #ffec5e; }
 }
 
 .hide {display: none !important}
+
+.flushed {text-decoration: line-through}

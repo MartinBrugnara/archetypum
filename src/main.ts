@@ -14,8 +14,7 @@ ADD  1,R1,R2
 `
 let ex_3_src = `ADD   1,R0,R0
 SUB R0,5,R1
-JZ 4
-JMP 0
+JNZ 0
 ADD 42,0,R2
 `
 
@@ -133,7 +132,7 @@ function setup() {
         safeInt(rsize.value, 0),
         CACHE,
         memMgm,
-        new TrueSpec(), // TODO: take from GUI once #4
+        new NBit(2, 4), // TODO: take from GUI once #4
         parse(raw_src.value)
     )
 

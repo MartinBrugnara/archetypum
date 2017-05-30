@@ -1,7 +1,7 @@
 class Rob {
     cb:CircularBuffer<RobEntry>;
 
-    constructor(private readonly size: number, private memMgm:MemoryMGM, private IU:Spec) {
+    constructor(private readonly size: number, private memMgm:MemoryMGM, private IU:BranchPredictor ) {
         this.cb = new CircularBuffer<RobEntry>(size)
         memMgm.rob = this;
     }

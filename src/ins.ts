@@ -3,6 +3,7 @@ class RawInstruction {
     public executed:number = -1;
     public written:number = -1;
     public committed:number = -1;
+    public flushed:boolean = false;
 
 
     constructor(

@@ -17,7 +17,7 @@ class Emulator {
         robSize: number, // if 0 then disable
         public cache:XCache,
         public memMgm:MemoryMGM,
-        public IU:Spec,
+        public IU:BranchPredictor,
         public readonly program:Program
     ) {
         this.REG = new Register(regConf);
@@ -99,6 +99,7 @@ class Emulator {
             let res = this.ROB.commit(this.clock, this.REG);
             if (res.uid !== -1) this.hist[res.uid].committed = this.clock;
             if (res.flush !== -1) {
+                for (let re of this.ROB.cb) this.hist[re[1].uid].flushed = true;
                 this.ROB.flush();
                 for (let fu of this.FUs) fu.flush();
                 this.memMgm.flush();

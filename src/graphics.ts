@@ -1,6 +1,7 @@
 class Graphics {
 
     clk: HTMLElement = document.getElementById('clock')!;
+    pc: HTMLElement = document.getElementById('pc')!;
     src: HTMLElement = document.getElementById('sourcecode')!;
     scexec: HTMLElement = document.getElementById('scexec')!;
     rs: HTMLElement = document.getElementById('rs')!;
@@ -12,6 +13,7 @@ class Graphics {
 
     paint(): void {
         this.clk.innerHTML = String(this.emu.clock);
+        this.pc.innerHTML = String(this.emu.pc);
         this.src.innerHTML = this.renderSrc();
         this.scexec.innerHTML = this.renderExec();
         this.rs.innerHTML = this.renderRS();
@@ -33,6 +35,15 @@ class Graphics {
                     '<td>', i.toString(), '</td>',
             ]);
         }
+
+        html.push([
+            '<tr',
+                (this.emu.pc === this.emu.program.length ? ' class="current"' : ''),
+                '>',
+                '<td>', String(this.emu.program.length), '</td>',
+                '<td>', 'EOF', '</td>',
+            ]);
+
         return Array.prototype.concat.apply([], html).join('');
     }
 
@@ -42,7 +53,9 @@ class Graphics {
         let html:string[][] = [];
         for (let i of this.emu.hist) {
             html.push([
-                '<tr>',
+                '<tr',
+                    i.flushed ? ' class="flushed"' : '',
+                    '>',
                     '<td>', String(rowid++), '</td>',
                     '<td>', i.toString(), '</td>',
                     '<td', (i.issued === this.emu.clock ? ' class="new-val"': '') ,'>',
