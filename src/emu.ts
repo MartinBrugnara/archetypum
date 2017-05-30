@@ -97,13 +97,11 @@ class Emulator {
         if (this.useRob) {
             this.ROB.readCDB(this.clock, this.CDB);
             let res = this.ROB.commit(this.clock, this.REG);
-            console.log(this.clock, "called commit", res);
             if (res.uid !== -1) this.hist[res.uid].committed = this.clock;
             if (res.flush !== -1) {
                 this.ROB.flush();
                 for (let fu of this.FUs) fu.flush();
                 this.memMgm.flush();
-                console.log(this.clock, 'flushing', res.flush);
                 this.pc = res.flush;
             }
         } else {

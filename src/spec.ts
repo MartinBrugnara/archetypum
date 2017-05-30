@@ -15,32 +15,30 @@ class Spec {
     }
 
     validateChoice(head: RobEntry, flags: boolean[]): number {
-        console.log("valdiate choice");
         let correct = this.real(head.instr, flags);
-        if (correct !== head.value) {
-            console.log('validate WRONG', head, flags);
-            return correct;
-        }
-        else {
-            console.log('validate correct', head, flags);
-            return -1;
-        }
+        return correct !== head.value ? correct : -1;
     }
-
 }
 
 
 class NoSpec extends Spec {
     nextPc(instr: RawInstruction, flags: boolean[]): number {
-        console.log('noSpec nextPc', instr, flags, this.real(instr, flags))
         return this.real(instr, flags);
     }
 }
 
-class YesSpec extends Spec {
+class TrueSpec extends Spec {
     speculative = true;
 
     nextPc(instr: RawInstruction, flags: boolean[]): number {
         return Number(instr.src0);
+    }
+}
+
+class FalseSpec extends Spec {
+    speculative = true;
+
+    nextPc(instr: RawInstruction, flags: boolean[]): number {
+        return instr.rowid + 1;
     }
 }

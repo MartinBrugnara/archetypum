@@ -133,7 +133,7 @@ function setup() {
         safeInt(rsize.value, 0),
         CACHE,
         memMgm,
-        new NoSpec(), // TODO: take from GUI once #4
+        new TrueSpec(), // TODO: take from GUI once #4
         parse(raw_src.value)
     )
 
