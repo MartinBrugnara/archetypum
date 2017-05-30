@@ -44,6 +44,10 @@ let nways: HTMLInputElement   = <HTMLInputElement>document.getElementById('nways
 let csize: HTMLInputElement   = <HTMLInputElement>document.getElementById('csize')!;
 let rsize: HTMLInputElement   = <HTMLInputElement>document.getElementById('rsize')!;
 
+let bp: HTMLSelectElement   = <HTMLSelectElement>document.getElementById('bp')!;
+let nbit_n: HTMLInputElement   = <HTMLInputElement>document.getElementById('nbit_n')!;
+let nbit_k: HTMLInputElement   = <HTMLInputElement>document.getElementById('nbit_k')!;
+
 let rst: HTMLElement = document.getElementById('reset')!;
 let conf: HTMLElement = document.getElementById('conf')!;
 let load: HTMLElement = document.getElementById('load')!;
@@ -122,6 +126,8 @@ function setup() {
 
     let memMgm = new MemoryMGM(CACHE, safeInt(rsize.value, 0) > 0);
 
+    let bp_val = (<HTMLOptionElement>bp.options[bp.selectedIndex]).value;
+
     let emu = new Emulator(
         [
             [FuKind.ADDER, 'ADDR', safeInt(iaddr.value, 3), {duration: safeInt(iaddrd.value, 2)}],
@@ -132,7 +138,7 @@ function setup() {
         safeInt(rsize.value, 0),
         CACHE,
         memMgm,
-        new NBit(2, 4), // TODO: take from GUI once #4
+        BpMap[bp_val](safeInt(nbit_n.value, 2), safeInt(nbit_k.value, 4)),
         parse(raw_src.value)
     )
 

@@ -160,6 +160,23 @@
                     Reorder Buffer (ROB):<br>
                     <span>size <input type="number" min="0" id="rsize" value=5 size=2 max=99 /> - <small>0: disable</small></span>
 
+                    <br><br>
+
+                    Branch predictor: <br>
+                    <select id="bp">
+                        <optgroup label="Static predictors">
+                            <option value="non">Non speculative</option>
+                            <option value="at">Always taken</option>
+                            <option value="ant">Always not taken</option>
+                            <option value="btfnt">BTFNT</option>
+                        </optgroup>
+                        <optgroup label="Dinamic predictors">
+                            <option value="nbit">n-bit</option>
+                        </optgroup>
+                    </select> <br>
+                    <span>N: <input type="number" id="nbit_n" value=2 size=2 min=0 max=99 /></span>
+                    <span>K: <input type="number" id="nbit_k" value=4 size=2 min=0 max=99 /></span>
+
                 </div>
                 <footer>
                     <a href="#" id="apply_conf">APPLY &amp; RESTART</a>

@@ -21,6 +21,8 @@ abstract class BranchPredictor {
     }
 }
 
+let BpMap: {[key:string]: (n:number, k:number ) => BranchPredictor} = {}
+
 // Static predictors
 class NonSpeculative extends BranchPredictor {
     speculative: boolean = false;
@@ -29,18 +31,21 @@ class NonSpeculative extends BranchPredictor {
         return this.real(instr, flags);
     }
 }
+BpMap['non'] = (n:number, k:number ) => new NonSpeculative(n,k);
 
 class AlwaysTaken extends BranchPredictor {
     nextPc(instr: RawInstruction, flags: boolean[]): number {
         return Number(instr.src0);
     }
 }
+BpMap['at'] = (n:number, k:number ) => new AlwaysTaken (n,k);
 
 class AlwaysNotTaken extends BranchPredictor {
     nextPc(instr: RawInstruction, flags: boolean[]): number {
         return instr.rowid + 1;
     }
 }
+BpMap['ant'] = (n:number, k:number ) => new AlwaysNotTaken (n,k);
 
 class BTFNT extends BranchPredictor {
     nextPc(instr: RawInstruction, flags: boolean[]): number {
@@ -48,6 +53,7 @@ class BTFNT extends BranchPredictor {
         return jaddr < instr.rowid ? jaddr : instr.rowid + 1;
     }
 }
+BpMap['btfnt'] = (n:number, k:number ) => new BTFNT(n,k);
 
 // Dynamic predictors
 class NBit extends BranchPredictor  {
@@ -80,5 +86,5 @@ class NBit extends BranchPredictor  {
 
         return ret;
     }
-
 }
+BpMap['nbit'] = (n:number, k:number ) => new NBit(n,k);
