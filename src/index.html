@@ -31,7 +31,39 @@
             <section id="tab-config" class="tab">
                 <a href="#tab-config" class="tab-link">configuration</a>
                 <section class="tab-body">
+                    <table id="ctable">
+                        <tr>
+                            <td>
+                                <div>
+                                    <header>Register File</header>
+                                    <table class="inner-table">
+                                        <tr>
+                                            <td>registers</td>
+                                            <td><input type="number" min="0" id="ri" value="7" size="2" max="99"></td>
+                                        </tr>
+                                    </table>
+                                </div>
+                            </td>
+                            <td>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>
+                            </td>
+                            <td>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>
+                            </td>
+                            <td>
+                            </td>
+                        </tr>
+                    </table>
                 </section>
+
+                <input type="hidden" min="0" id="rf" value="0" size="2" max="99">
+                <center><a href="#" id="apply_conf" class="btn blu">apply</a></center>
             </section>
             <section id="tab-exec" class="tab">
                 <a href="#tab-exec" class="tab-link">execution</a>

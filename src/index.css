@@ -98,10 +98,6 @@ a.btn.blu {
 
 
 /* -------------------------------------------------------------------------- */
-
-#source header {
-}
-
 #raw-src {
   display: block;
   margin:auto;
@@ -112,3 +108,48 @@ a.btn.blu {
   font-family: "Lucida Console", Monaco, monospace;
   text-transform: uppercase;
 }
+
+#tab-config .tab-body {
+  padding: 0;
+  height: 90%;
+}
+
+#ctable {
+  height: 100%;
+  width: 100%;
+  border-spacing: 15px;
+}
+
+#ctable td {
+  border: 1px solid #fff;
+  width: 50%;
+  height: 33.33%;
+}
+
+#ctable td > div {
+  height: 100%;
+  width: 100%;
+}
+
+#ctable header {
+  position: relative;
+  top: -0.5em;
+  background-color: #e0e0e0;
+  padding-left: .75em;
+  padding-right: .75em;
+  left: 1em;
+  width: auto;
+  display: inline-block;
+}
+
+.inner-table {
+  width: 100%;
+  height: 100%;
+  margin-top: -0.5em;
+  border-spacing: 10px;
+  text-align: center;
+}
+#ctable .inner-table td {
+  border: none;
+}
+
