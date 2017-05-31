@@ -22,10 +22,10 @@ a, a:link, a:visited, a:hover, a:active {
 a.tab-link {
   display: block;
   position: relative;
-  top: -2em;
+  top: -2rem;
   width: 33.33%;
-  height: 2em;
-  line-height: 2em;
+  height: 2rem;
+  line-height: 2rem;
   text-align: center;
   text-transform: uppercase;
 }
@@ -39,12 +39,12 @@ a.tab-link {
   display:block;
   position: absolute;
   width: 100%;
-  top: 2em;
-  bottom: 1.5em;
+  top: 2rem;
+  bottom: 1.5rem;
 }
 
 .tab-body {
-  margin-top: -2em;
+  margin-top: -2rem;
   padding: 20px;
   line-height: 1em;
 }
@@ -62,10 +62,10 @@ a.tab-link {
   position: absolute;
   bottom: 0;
   width: 100%;
-  height: 1.5em;
-  line-height: 1.5em;
+  height: 1.5rem;
+  line-height: 1.5rem;
   text-align: center;
-  font-size: 0.8em;
+  font-size: 0.8rem;
 }
 
 #main > footer a {font-weight: bold;}
@@ -133,7 +133,7 @@ a.btn.blu {
 
 #ctable header {
   position: relative;
-  top: -0.5em;
+  top: -0.7em;
   background-color: #e0e0e0;
   padding-left: .75em;
   padding-right: .75em;
@@ -149,7 +149,11 @@ a.btn.blu {
   border-spacing: 10px;
   text-align: center;
 }
+
 #ctable .inner-table td {
   border: none;
 }
+
+#ctable .inner-table tr.row3 td {width: 33.33%}
+
 
