@@ -9,6 +9,12 @@ class Graphics {
     cache: HTMLElement = document.getElementById('cache')!;
     rob: HTMLElement = document.getElementById('rob')!;
 
+    scrl_source:HTMLElement = document.getElementById('scroll_source')!;
+    scrl_source_tbl:HTMLElement = document.getElementById('sourcecode_tbl')!;
+
+    scrl_exec:HTMLElement = document.getElementById('scroll_exec')!;
+    scrl_exec_tbl:HTMLElement = document.getElementById('exec_tbl')!;
+
     constructor(private emu: Emulator) {}
 
     paint(): void {
@@ -20,7 +26,26 @@ class Graphics {
         this.reg.innerHTML = this.renderREG();
         this.cache.innerHTML = this.renderCache();
         this.rob.innerHTML = this.renderRob();
+
+        this.scroll();
     }
+
+    scroll(): void {
+        // Execute
+        this.scrl_exec.scrollTop = this.scrl_exec_tbl.clientHeight;
+
+        // Source code
+        let row = this.scrl_source_tbl.querySelector('.current');
+        if (row === undefined || row === null)
+            return;
+
+        let innerTop = row.getBoundingClientRect().top;
+        let outerTop = this.scrl_source_tbl.getBoundingClientRect().top;
+        let paneHeight = this.scrl_source.clientHeight;
+        let scroll = (innerTop - outerTop) - ((paneHeight - row.clientHeight) / 2);
+        this.scrl_source.scrollTop = scroll;
+    }
+
 
     renderSrc(): string {
         let rowid = 0;
@@ -135,12 +160,7 @@ class Graphics {
         if (this.emu.cache.size === 0) return "";
 
         let html:string[][] = [];
-        html.push([
-            '<caption>cache | hit&nbsp;',
-            String(Math.round(this.emu.cache.readHit / (this.emu.cache.readHit + this.emu.cache.readMiss) * 100)),
-            '% - evictions ', String(this.emu.cache.evictions),
-            '</caption><thead><tr><th></th>'
-        ]);
+        html.push(['<caption>cache</caption><thead><tr><th></th>']);
         for(let j=0; j<this.emu.cache.n;j++)
             html.push(['<th colspan="3">N:', String(j), '</th>']);
         html.push(['</tr><tr><th></th>']);
@@ -166,6 +186,14 @@ class Graphics {
             html.push(['</tr>']);
         }
         html.push(['</tbody>']);
+
+        html.push([
+            '<tfoot><tr><td colspan=7>',
+            'hit&nbsp;',
+            String(Math.round(this.emu.cache.readHit / (this.emu.cache.readHit + this.emu.cache.readMiss) * 100)),
+            '% - evictions ', String(this.emu.cache.evictions),
+            '</td></tr><tfoot>'
+        ]);
 
         return Array.prototype.concat.apply([], html).join('');
     }

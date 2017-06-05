@@ -20,10 +20,10 @@
                     </header>
 
                     <textarea class="tech" id="raw-src" cols="50" rows="17"></textarea>
-                    <center><a href="#" id="rdy" class="btn blu">load</a></center>
-
+                    <a href="#" id="rdy" class="act-btn btn blu">load</a>
                 </section>
             </section>
+
             <section id="tab-config" class="tab">
                 <a href="#tab-config" class="tab-link">configuration</a>
                 <section class="tab-body">
@@ -35,7 +35,7 @@
                                     <table class="inner-table">
                                         <tr>
                                             <td>registers</td>
-                                            <td># <input type="number" min="0" id="ri" value="7" size="2" max="99"></td>
+                                            <td># <input type="number" min="0" id="ri" value="8" size="2" max="99"></td>
                                         </tr>
                                     </table>
                                 </div>
@@ -70,7 +70,7 @@
                             </td>
                             <td>
                                 <div>
-                                    <header>Memory</header>
+                                    <header>Cache</header>
                                     <table class="inner-table">
                                         <tr>
                                             <td>algorithm</td>
@@ -105,7 +105,7 @@
                                     <table class="inner-table">
                                         <tr>
                                             <td>kind</td>
-                                            <td><select id="bp"><optgroup label="Static predictors"><option value="non">Non speculative</option><option value="at">Always taken</option><option value="ant">Always not taken</option><option value="btfnt">BTFNT</option></optgroup><optgroup label="Dinamic predictors"><option value="nbit">n-bit</option></optgroup></select></td>
+                                            <td><select id="bp"><optgroup label="Static predictors"><option value="non">Non speculative</option><option value="at">Always taken</option><option value="ant">Always not taken</option><option value="btfnt">BTFNT</option></optgroup><optgroup label="Dinamic predictors"><option value="nbit" selected>n-bit</option></optgroup></select></td>
                                         </tr>
                                         <tr><td>N (bits)</td><td><input type="number" id="nbit_n" value=2 size=2 min=0 max="99"></td></tr>
                                         <tr><td>K (size)</td><td><input type="number" id="nbit_k" value=4 size=2 min=0 max="99"></td></tr>
@@ -117,8 +117,9 @@
                 </section>
 
                 <input type="hidden" min="0" id="rf" value="0" size="2" max="99">
-                <center><a href="#" id="apply_conf" class="btn blu">apply</a></center>
+                <a href="#" id="apply_conf" class="act-btn btn blu">apply</a>
             </section>
+
             <section id="tab-exec" class="tab active">
                 <a href="#tab-exec" class="tab-link">execution</a>
                 <section class="tab-body">
@@ -146,6 +147,7 @@
                     <table id="exec-tbl">
                         <tr>
                             <td rowspan="2">
+                                <div class="scrollable" id="scroll_source">
                                     <table id="sourcecode_tbl">
                                         <caption>Source Code</caption>
                                         <thead>
@@ -157,59 +159,71 @@
                                         <tbody class="tech" id="sourcecode">
                                         </tbody>
                                     </table>
+                                </div>
                             </td>
                             <td>
-                                <table>
-                                    <caption>Execution</caption>
-                                    <thead>
-                                        <tr>
-                                            <th>#</th>
-                                            <th>Instruction</th>
-                                            <th>Issue</th>
-                                            <th>Exec</th>
-                                            <th>Write</th>
-                                            <th>Commit</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody class="tech" id="scexec">
-                                    </tbody>
-                                </table>
+                                <div class="scrollable" id="scroll_exec">
+                                    <table id="exec_tbl">
+                                        <caption>Execution</caption>
+                                        <thead>
+                                            <tr>
+                                                <th>#</th>
+                                                <th>Instruction</th>
+                                                <th>Issue</th>
+                                                <th>Exec</th>
+                                                <th>Write</th>
+                                                <th>Commit</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody class="tech" id="scexec">
+                                        </tbody>
+                                    </table>
+                                </div>
                             </td>
                             <td>
-                                <table id="rob">
-                                </table>
+                                <div class="scrollable">
+                                    <table id="rob">
+                                    </table>
+                                </div>
                             </td>
                         </tr>
                         <tr>
                             <td>
-                                <table>
-                                    <caption>Reservation Stations</caption>
-                                    <thead>
-                                        <tr>
-                                            <th>Name</th>
-                                            <th>Busy</th>
-                                            <th>Op</th>
-                                            <th>V<sub>j</sub></th>
-                                            <th>V<sub>k</sub></th>
-                                            <th>Q<sub>j</sub></th>
-                                            <th>Q<sub>k</sub></th>
-                                            <th>tag</th>
-                                            <th>due</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody class="tech" id="rs">
-                                    </tbody>
-                                </table>
-                            </td>
-                            <td>
-                                <div>
-                                    <table id="reg">
+                                <div class="scrollable">
+                                    <table>
+                                        <caption>Reservation Stations</caption>
+                                        <thead>
+                                            <tr>
+                                                <th>Name</th>
+                                                <th>Busy</th>
+                                                <th>Op</th>
+                                                <th>V<sub>j</sub></th>
+                                                <th>V<sub>k</sub></th>
+                                                <th>Q<sub>j</sub></th>
+                                                <th>Q<sub>k</sub></th>
+                                                <th>tag</th>
+                                                <th>due</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody class="tech" id="rs">
+                                        </tbody>
                                     </table>
                                 </div>
+                            </td>
+                            <td>
+                                <div class="scrollable">
+                                    <div>
+                                        <table id="reg">
+                                        </table>
+                                    </div>
 
-                                <div>
-                                    <table id="cache">
-                                    </table>
+                                    <br>
+                                    <br>
+
+                                    <div>
+                                        <table id="cache">
+                                        </table>
+                                    </div>
                                 </div>
                             </td>
                         </tr>

@@ -96,6 +96,7 @@ a.btn {
     user-select: none;
     font-size: 1.5em;
     padding: .5em 1em;
+    line-height: 1em;
     border-radius: 2px;
     text-transform: uppercase;
 }
@@ -182,7 +183,7 @@ a.btn.blu {
   display: block;
   width: 798px;
   height: 2.5rem;
-  margin: -10px 40px 10px -20px;
+  margin: -10px 0 10px 0;
   background: white;
   /* box-shadow: 0 4px 5px 0 rgba(0,0,0,0.14), 0 1px 10px 0 rgba(0,0,0,0.12), 0 2px 4px -1px rgba(0,0,0,0.3); */
   box-shadow: 0 2px 2px 0 rgba(0,0,0,0.14), 0 1px 5px 0 rgba(0,0,0,0.12), 0 3px 1px -2px rgba(0,0,0,0.2);
@@ -209,7 +210,7 @@ a.btn.blu {
   background-size: 100% 100%;
   background-position: center;
 }
-.icon.tick, .icon.busy {background-image: url('data:image/svg+xml;utf8,<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" viewBox="0 0 1000 1000" enable-background="new 0 0 1000 1000" xml:space="preserve"><g><path d="M990,190.6l-65.5-63.2L335.2,743.9L73.2,493.2L10,561l327.4,311.6l63.2-67.7l0,0L990,190.6z"/></g></svg>');}
+
 .icon.clock {background-image: url('data:image/svg+xml;utf8,<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M0 0h24v24H0z" fill="none"/><path d="M22 5.72l-4.6-3.86-1.29 1.53 4.6 3.86L22 5.72zM7.88 3.39L6.6 1.86 2 5.71l1.29 1.53 4.59-3.85zM12.5 8H11v6l4.75 2.85.75-1.23-4-2.37V8zM12 4c-4.97 0-9 4.03-9 9s4.02 9 9 9c4.97 0 9-4.03 9-9s-4.03-9-9-9zm0 16c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7z"/></svg>');}
 .icon.reset {background-image: url('data:image/svg+xml;utf8,<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46C19.54 15.03 20 13.57 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74C4.46 8.97 4 10.43 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z"/><path d="M0 0h24v24H0z" fill="none"/></svg>');}
 .icon.pause {background-image: url('data:image/svg+xml;utf8,<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/><path d="M0 0h24v24H0z" fill="none"/></svg>');}
@@ -231,9 +232,11 @@ body:not(.playing) #pause {display:none}
 #exec-tbl {
   width: 100%;
   height: 490px;
+  border-collapse: collapse;
+  border-spacing: 0;
 }
 
-#exec-tbl td {
+#exec-tbl table td {
   border: 1px solid #000;
 }
 
@@ -248,6 +251,7 @@ body:not(.playing) #pause {display:none}
 }
 
 #exec-tbl table {
+  border-spacing: 0;
   border-collapse: collapse;
   margin: auto;
 }
@@ -255,7 +259,7 @@ body:not(.playing) #pause {display:none}
 #exec-tbl table td {
   font-size: 14px;
   font-family: "Lucida Console", Monaco, monospace;
-  padding: 5px 6px 4px 6px;
+  padding: 5px 4px 4px 4px;
   min-width:32px;
   text-align: center;
 }
@@ -275,6 +279,57 @@ body:not(.playing) #pause {display:none}
 #sourcecode tr > td:nth-child(2),
 #scexec tr > td:nth-child(2),
 #rob tr > td:nth-child(2) {
-  width: 117px;
+  width: 111px;
   text-align: left;
+}
+
+#tab-exec .tab-body {
+  padding: 20px 0 10px 0;
+}
+
+.scrollable {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow-y: scroll;
+  overflow-x: hidden;
+}
+
+#cache tr > td:nth-child(2),
+#cache tr > td:nth-child(3),
+#cache tr > td:nth-child(5),
+#cache tr > td:nth-child(6) {
+  border-right: transparent;
+  border-left: transparent;
+}
+#cache tr > td:nth-child(4),
+#cache tr > td:nth-child(7) {
+  border-left: transparent;
+}
+
+
+.tick, .busy {
+  background-image: url('data:image/svg+xml;utf8,<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" viewBox="0 0 1000 1000" enable-background="new 0 0 1000 1000" xml:space="preserve"><g><path d="M990,190.6l-65.5-63.2L335.2,743.9L73.2,493.2L10,561l327.4,311.6l63.2-67.7l0,0L990,190.6z"/></g></svg>');
+  background-repeat: no-repeat;
+  background-size: 60% 60%;
+  background-position: center;
+}
+
+tr.current td { background-color: #ffec5e !important; }
+
+.new-val {
+  color: mediumvioletred;
+  font-weight: bold;
+}
+
+.flushed {text-decoration: line-through}
+
+.act-btn {
+  position: absolute;
+  bottom: 15px;
+  left: 400px;
+  -ms-transform: translate(-50%,0);
+  -webkit-transform: translate(-50%,0);
+  transform: translate(-50%,0);
 }
