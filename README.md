@@ -1,6 +1,6 @@
 # Archetypum 
-## Tomasulo algorithm visualizator
+### Tomasulo algorithm visualizator
 
-Single page (demo)[demo/index.html].
+Single page [demo](demo/index.html).
 
 Authors: @GianlucaBortoli, @MartinBrugnara
