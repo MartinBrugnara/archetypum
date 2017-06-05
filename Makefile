@@ -6,6 +6,7 @@ build: dist clean
 	cat ./src/!(main).ts ./src/main.ts > ./src/archetypum.ts
 	tsc -p tsconfig.json
 	cp ./src/index.{html,css} ./dist/
+	# TODO: bundle all in the html file.
 
 lint:
 	tslint --type-check --project ./src/

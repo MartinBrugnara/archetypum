@@ -16,11 +16,7 @@
                 <section class="tab-body">
                     <header>
                         <h3>Please type your program or select an example.</h3>
-                        <p>Examples:
-                                <a href="#" id="ex-1">1</a>,
-                                <a href="#" id="ex-2">2</a>,
-                                <a href="#" id="ex-3">3</a>
-                        </p>
+                        <span>Examples: </span><ul id="exlist"></ul>
                     </header>
 
                     <textarea class="tech" id="raw-src" cols="50" rows="17"></textarea>
@@ -123,12 +119,109 @@
                 <input type="hidden" min="0" id="rf" value="0" size="2" max="99">
                 <center><a href="#" id="apply_conf" class="btn blu">apply</a></center>
             </section>
-            <section id="tab-exec" class="tab">
+            <section id="tab-exec" class="tab active">
                 <a href="#tab-exec" class="tab-link">execution</a>
                 <section class="tab-body">
+                    <header id="control-bar">
+                        <table>
+                            <tr>
+                                <td>
+                                    <i class="icon clock"></i><span id="clock">0</span>
+                                    &nbsp;
+                                    <i class="icon pc"></i><span id="pc">0</span>
+                                </td>
+                                <td>
+                                    <a id="reset"><i class="icon reset"></i></a>
+                                    <a id="play"><i class="icon play"></i></a>
+                                    <a id="pause"><i class="icon pause"></i></a>
+                                    <a id="step"><i class="icon step"></i></a>
+                                </td>
+                                <td>
+                                    <input id="speed" type="range" min="1" max="20" step="1" value="5">
+                                </td>
+                            </tr>
+                        </table>
+                    </header>
+
+                    <table id="exec-tbl">
+                        <tr>
+                            <td rowspan="2">
+                                    <table id="sourcecode_tbl">
+                                        <caption>Source Code</caption>
+                                        <thead>
+                                            <tr>
+                                                <th>#</th>
+                                                <th>Instr</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody class="tech" id="sourcecode">
+                                        </tbody>
+                                    </table>
+                            </td>
+                            <td>
+                                <table>
+                                    <caption>Execution</caption>
+                                    <thead>
+                                        <tr>
+                                            <th>#</th>
+                                            <th>Instr</th>
+                                            <th>Issue</th>
+                                            <th>Exec</th>
+                                            <th>Write</th>
+                                            <th>Commit</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="tech" id="scexec">
+                                    </tbody>
+                                </table>
+                            </td>
+                            <td>
+                                <table id="rob">
+                                </table>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>
+                                <table>
+                                    <caption>Reservation Stations</caption>
+                                    <thead>
+                                        <tr>
+                                            <th>Name</th>
+                                            <th>Busy</th>
+                                            <th>Op</th>
+                                            <th>V<sub>j</sub></th>
+                                            <th>V<sub>k</sub></th>
+                                            <th>Q<sub>j</sub></th>
+                                            <th>Q<sub>k</sub></th>
+                                            <th>tag</th>
+                                            <th>due cycles</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="tech" id="rs">
+                                    </tbody>
+                                </table>
+                            </td>
+                            <td>
+                                <div>
+                                    <table id="reg">
+                                    </table>
+                                </div>
+
+                                <div>
+                                    <table id="cache">
+                                    </table>
+                                </div>
+                            </td>
+                        </tr>
+                    </table>
                 </section>
             </section>
-            <footer>Made by <a href="mailto:mb@disi.unitn.it">Martin Brugnara</a> and <a href="mailto:gianluca.bortoli@unitn.it">Gianluca Bortoli</a>.</footer>
+            <footer>
+                Made by <a href="mailto:mb@disi.unitn.it">Martin Brugnara</a> and <a href="mailto:gianluca.bortoli@unitn.it">Gianluca Bortoli</a>
+                <a href="https://github.com/MartinBrugnara/archetypum" target="_blank"><i id="octocat" alt="octocat"></i></a>
+            </footer>
         </div>
+
+        <script src="archetypum.js"><!-- Unleash the magic --></script>
     </body>
 </html>
