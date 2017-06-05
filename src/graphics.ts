@@ -141,7 +141,11 @@ class Graphics {
             '% - evictions ', String(this.emu.cache.evictions),
             '</caption><thead><tr><th></th>'
         ]);
-        for(let j=0; j<this.emu.cache.n;j++) html.push(['<th>', String(j), '</th>']);
+        for(let j=0; j<this.emu.cache.n;j++)
+            html.push(['<th colspan="3">N:', String(j), '</th>']);
+        html.push(['</tr><tr><th></th>']);
+        for(let j=0; j<this.emu.cache.n;j++)
+            html.push(['<th>addr</th><th>val</th><th>dirty</th>']);
         html.push(['</tr></thead>']);
 
         html.push(['<tbody>']);
@@ -150,11 +154,14 @@ class Graphics {
             for(let j=0; j<this.emu.cache.n;j++) {
                 let entry = this.emu.cache._cache[i][j];
                 // index, value, dirty
-                html.push([
-                    '<td>', entry[1] !== undefined ? entry[1] : '', '</td>',
-                    '<td>', entry[2] !== undefined ? entry[2] : '', '</td>',
-                    '<td', (entry[3] !== undefined && entry[3] ? entry[3] : '') ? ' class="busy">' : '>', '</td>'
-                ]);
+                if (entry[0])
+                    html.push([
+                        '<td>', String(entry[1]), '</td>',
+                        '<td>', String(entry[2]), '</td>',
+                        '<td', entry[3] ? ' class="busy">' : '>', '</td>'
+                    ]);
+                else
+                    html.push(['<td></td><td></td><td></td>'])
             }
             html.push(['</tr>']);
         }
@@ -167,7 +174,7 @@ class Graphics {
         if (!this.emu.useRob) return '';
 
         let html:string[][] = [];
-        html.push(['<caption>reorder buffer</caption><thead><tr><th>tag</th><th>Instruction</th><th>dst</th><th>value</th><th>ready</th><th>rowid</th></tr></thead><tbody>']);
+        html.push(['<caption>reorder buffer</caption><thead><tr><th>tag</th><th>Instruction</th><th>dst</th><th>val</th><th>rdy</th><th>row</th></tr></thead><tbody>']);
 
         for (let row of this.emu.ROB.cb) {
             html.push([

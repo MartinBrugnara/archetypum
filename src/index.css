@@ -237,8 +237,44 @@ body:not(.playing) #pause {display:none}
   border: 1px solid #000;
 }
 
-#exec-tbl tr > td:nth-child(2),
-#exec-tbl tr > td:nth-child(3) {
+#exec-tbl > tr > td:nth-child(2),
+#exec-tbl > tr > td:nth-child(3) {
   width: 50%;
   height: 50%;
+}
+
+#exec-tbl td {
+  vertical-align: top;
+}
+
+#exec-tbl table {
+  border-collapse: collapse;
+  margin: auto;
+}
+
+#exec-tbl table td {
+  font-size: 14px;
+  font-family: "Lucida Console", Monaco, monospace;
+  padding: 5px 6px 4px 6px;
+  min-width:32px;
+  text-align: center;
+}
+
+#exec-tbl table caption, #exec-tbl table thead th {
+  text-transform: capitalize;
+}
+
+#exec-tbl table tbody > tr:nth-child(odd) > td {
+  background: #fff;
+}
+
+#exec-tbl td table  {
+  vertical-align: top
+}
+
+#sourcecode tr > td:nth-child(2),
+#scexec tr > td:nth-child(2),
+#rob tr > td:nth-child(2) {
+  width: 117px;
+  text-align: left;
 }
