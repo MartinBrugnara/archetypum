@@ -87,7 +87,7 @@ InstrLen['JZ']  = 0;
 InstrLen['JNZ'] = 0;
 
 
-function parse(src: string): Program {
+function parse(src: string, rsize: number): Program {
     let prg:Program = [];
     let rowid:number = 0;
     for (let row of src.split("\n")) {
@@ -98,14 +98,22 @@ function parse(src: string): Program {
         let cmd = rawcmd.trim().toUpperCase();
 
         if (!(cmd in StringOp)) // not valid instr
-            throw new Error(`${cmd} is not a valid instruction`);
+            throw new Error(`[${crow}] ${cmd} is not a valid instruction`);
 
         let args = crow.substring(rawcmd.length).replace(/\s+/g, '').split(',');
 
         if (cmd in InstrLen && InstrLen[cmd] !== args.length) // wrong # of args
-            throw new Error(`${cmd} expects ${InstrLen[cmd]} operands, got ${args.length}`);
+            throw new Error(`[${crow}] ${cmd} expects ${InstrLen[cmd]} operands, got ${args.length}`);
         if (!(cmd in InstrLen) && args.length !== 3)
-            throw new Error(`${cmd} expects 3 operands, got ${args.length}`);
+            throw new Error(`[${crow}] ${cmd} expects 3 operands, got ${args.length}`);
+
+        for (let arg of args) {
+            let v = isNaN(parseInt(arg, 10));
+            let reg = parseInt(arg.substring(1, arg.length), 10);
+
+            if (!(!v || (arg[0] === 'R' && !isNaN(reg) && reg >= 0 && reg < rsize)))
+                throw new Error(`[${crow}] ${arg.substring(1, arg.length)} is not a valid register`);
+        }
 
         prg.push(new RawInstruction(StringOp[cmd], args[0],
                                     args.length > 1 ? args[1] : "",
