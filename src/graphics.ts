@@ -149,7 +149,12 @@ class Graphics {
             html.push(['<tr><td>', String(i), '</td>']);
             for(let j=0; j<this.emu.cache.n;j++) {
                 let entry = this.emu.cache._cache[i][j];
-                html.push(['<td>',entry.join(','), '</td>']);
+                // index, value, dirty
+                html.push([
+                    '<td>', entry[1] !== undefined ? entry[1] : '', '</td>',
+                    '<td>', entry[2] !== undefined ? entry[2] : '', '</td>',
+                    '<td', (entry[3] !== undefined && entry[3] ? entry[3] : '') ? ' class="busy">' : '>', '</td>'
+                ]);
             }
             html.push(['</tr>']);
         }
