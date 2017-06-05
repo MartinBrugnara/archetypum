@@ -57,7 +57,6 @@ OpKindMap[Op.JMP] = FuKind.IU;
 OpKindMap[Op.JZ]  = FuKind.IU;
 OpKindMap[Op.JNZ] = FuKind.IU;
 
-
 let OpString: {[index:number]: string} = {}
 OpString[Op.ADD] = "ADD";
 OpString[Op.SUB] = "SUB";
@@ -80,16 +79,34 @@ StringOp['JMP'] = Op.JMP;
 StringOp['JZ']  = Op.JZ;
 StringOp['JNZ'] = Op.JNZ;
 
+let InstrLen: {[index:string]: number} = {}
+InstrLen['LDR'] = 2;
+InstrLen['STR'] = 2;
+InstrLen['JMP'] = 0;
+InstrLen['JZ']  = 0;
+InstrLen['JNZ'] = 0;
+
+
 function parse(src: string): Program {
     let prg:Program = [];
     let rowid:number = 0;
     for (let row of src.split("\n")) {
         let crow = row.trim();
-        if (!crow.length || crow.lastIndexOf(';', 0) === 0)     // is a comment
+        if (!crow.length || crow.lastIndexOf(';', 0) === 0) // skip comments
             continue;
         let rawcmd = crow.split(' ', 1)[0];
         let cmd = rawcmd.trim().toUpperCase();
+
+        if (!(cmd in StringOp)) // not valid instr
+            throw new Error(`${cmd} is not a valid instruction`);
+
         let args = crow.substring(rawcmd.length).replace(/\s+/g, '').split(',');
+
+        if (cmd in InstrLen && InstrLen[cmd] !== args.length) // wrong # of args
+            throw new Error(`${cmd} expects ${InstrLen[cmd]} operands, got ${args.length}`);
+        if (!(cmd in InstrLen) && args.length !== 3)
+            throw new Error(`${cmd} expects 3 operands, got ${args.length}`);
+
         prg.push(new RawInstruction(StringOp[cmd], args[0],
                                     args.length > 1 ? args[1] : "",
                                     args.length === 3 ? args[2] : "",
