@@ -21,7 +21,43 @@
                         <span>Examples: </span><ul id="exlist"></ul>
                     </header>
 
-                    <textarea class="tech" id="raw-src" cols="50" rows="17"></textarea>
+                    <div id="raw-wrap"><!--
+                        --><div>
+                            <h4>Source</h4>
+                            <textarea class="tech" id="raw-src" cols="25" rows="17"></textarea>
+                        </div><!--
+                        --><div id="help">
+                            <h4>Instruction set</h4>
+                            <ul>
+                                <li>Integer arithmetic</li>
+                                <li>
+                                    <ul>
+                                        <li>ADD</li>
+                                        <li>SUB</li>
+                                        <li>MUL</li>
+                                        <li>DIV</li>
+                                    </ul>
+                                </li>
+
+                                <li>Flow control</li>
+                                <li>
+                                    <ul>
+                                        <li>JMP</li>
+                                        <li>JZ</li>
+                                        <li>JNZ</li>
+                                    </ul>
+                                </li>
+
+                                <li>Memory interface</li>
+                                <li>
+                                    <ul>
+                                        <li>LOAD</li>
+                                        <li>STORE</li>
+                                    </ul>
+                                </li>
+                            </ul>
+                        </div><!--
+                    --></div>
                     <a href="#" id="rdy" class="act-btn btn blu">load</a>
                 </section>
             </section>
@@ -140,7 +176,8 @@
                                     <a id="step"><i class="icon step"></i></a>
                                 </td>
                                 <td>
-                                    <input id="speed" type="range" min="1" max="20" step="1" value="5">
+                                    <i class="icon speed"></i>
+                                    <input id="speed" type="range" min="1" max="20" step="1" value="5" />
                                 </td>
                             </tr>
                         </table>

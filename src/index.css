@@ -1,4 +1,7 @@
-* {box-sizing: border-box}
+* {
+  box-sizing: border-box;
+  vertical-align: middle; /* Otherwise f**king tables does not align */
+}
 
 html {
   font-family: Verdana, Geneva, sans-serif;
@@ -34,7 +37,7 @@ a.tab-link {
 
 .tab-link:hover {
   cursor: pointer;
-  background-color: #ccc;
+  background-color: #ffec5e;
 }
 
 .tab {
@@ -53,7 +56,7 @@ a.tab-link {
 
 .tab.active, .tab.active .tab-link {
   z-index: 100;
-  background-color: #e0e0e0;
+  background-color: #ffab40;
 }
 
 #main .tab:nth-child(2) .tab-link {left: 33.33%;}
@@ -120,15 +123,29 @@ a.btn.blu {
 #exlist li:after {content:', '}
 #exlist li:last-child:after {content:''}
 
-#raw-src {
+#raw-wrap {
   display: block;
   margin:auto;
-  margin-top: 2em;
+  margin-top: 0;
   margin-bottom: 1em;
+}
 
+#raw-wrap > * {
+  display: inline-block;
+  width: 50%;
+  vertical-align: top;
+}
+
+#raw-src {
+  display: block;
+  margin: auto;
   font-size: 1.25em;
   font-family: "Lucida Console", Monaco, monospace;
   text-transform: uppercase;
+}
+
+#raw-wrap h4 {
+  text-align: center;
 }
 
 #tab-config .tab-body {
@@ -156,7 +173,7 @@ a.btn.blu {
 #ctable header {
   position: relative;
   top: -0.7em;
-  background-color: #e0e0e0;
+  background-color: #ffab40;
   padding-left: .75em;
   padding-right: .75em;
   left: 1em;
@@ -219,6 +236,7 @@ a.btn.blu {
 .icon.play-circle-fill {background-image: url('data:image/svg+xml;utf8,<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M0 0h24v24H0z" fill="none"/><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/></svg>');}
 .icon.pc {background-image: url('data:image/svg+xml;utf8,<svg enable-background="new 0 0 24 24" id="Layer_1" version="1.1" viewBox="0 0 24 24" x="0px" xml:space="preserve" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" y="0px"><g id="XMLID_1_"><path d="M0,0h24v24H0V0z" fill="none"/><g id="XMLID_2_"><rect height="2" id="XMLID_3_" width="12" x="4" y="10"/><rect height="2" id="XMLID_4_" width="12" x="4" y="6"/><rect height="2" id="XMLID_5_" width="8" x="4" y="14"/><polygon id="XMLID_6_" points="14,14 14,20 19,17   "/></g></g></svg>');}
 .icon.step {background-image: url('data:image/svg+xml;utf8,<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/><path d="M0 0h24v24H0z" fill="none"/></svg>');}
+.icon.speed {background-image: url('data:image/svg+xml;utf8,<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 87.607 87.607" style="enable-background:new 0 0 87.607 87.607;" xml:space="preserve"><g><g><g><path d="M52.173,57.876c-0.028-0.329-0.122-0.658-0.286-0.971L31.254,17.971c-0.609-1.144-1.983-1.684-3.229-1.267 c-1.248,0.423-1.993,1.674-1.756,2.95l8.041,43.173c0.063,0.343,0.196,0.65,0.377,0.93c0.078,0.369,0.173,0.736,0.3,1.104 c1.295,3.694,4.838,6.184,8.813,6.184c1.027,0,2.048-0.166,3.024-0.497c2.354-0.792,4.253-2.438,5.347-4.636 c1.095-2.198,1.251-4.68,0.444-6.994C52.492,58.555,52.34,58.21,52.173,57.876z M43.803,19.533c-1.471,0-2.662,1.17-2.662,2.613 c0,1.443,1.191,2.614,2.662,2.614c21.218,0,38.476,16.961,38.476,37.806c0,1.442,1.195,2.613,2.664,2.613 c1.473,0,2.664-1.171,2.664-2.613C87.605,38.834,67.956,19.533,43.803,19.533z M16.276,29.087C5.933,37.306,0,49.507,0,62.565 c0,1.443,1.191,2.615,2.663,2.615c1.474,0,2.665-1.172,2.665-2.615c0-11.47,5.211-22.189,14.298-29.409 c1.146-0.908,1.32-2.556,0.397-3.679C19.1,28.355,17.423,28.179,16.276,29.087z"/></g></g></g></svg>');}
 
 body.playing #play {display:none}
 body:not(.playing) #pause {display:none}
@@ -236,8 +254,13 @@ body:not(.playing) #pause {display:none}
   border-spacing: 0;
 }
 
+#exec-tbl table caption,
+#exec-tbl table th {
+  padding-bottom: 2px;
+}
 #exec-tbl table td {
   border: 1px solid #000;
+  background-color: #dfdfdf;
 }
 
 #exec-tbl > tr > td:nth-child(2),
@@ -268,9 +291,8 @@ body:not(.playing) #pause {display:none}
   text-transform: capitalize;
 }
 
-#exec-tbl table tbody > tr:nth-child(odd) > td {
-  background: #fff;
-}
+#exec-tbl table tbody > tr:nth-child(odd) > td {background: #fff;}
+/* #exec-tbl table tbody > tr:nth-child(even) > td {background: #efefef;} */
 
 #exec-tbl td table  {
   vertical-align: top
