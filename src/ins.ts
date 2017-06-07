@@ -80,11 +80,11 @@ StringOp['JZ']  = Op.JZ;
 StringOp['JNZ'] = Op.JNZ;
 
 let InstrLen: {[index:string]: number} = {}
-InstrLen['LDR'] = 2;
+InstrLen['LDR'] = 3;
 InstrLen['STR'] = 2;
-InstrLen['JMP'] = 0;
-InstrLen['JZ']  = 0;
-InstrLen['JNZ'] = 0;
+InstrLen['JMP'] = 1;
+InstrLen['JZ']  = 1;
+InstrLen['JNZ'] = 1;
 
 
 function parse(src: string, rsize: number): Program {

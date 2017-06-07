@@ -291,7 +291,7 @@ body:not(.playing) #pause {display:none}
   text-transform: capitalize;
 }
 
-#exec-tbl table tbody > tr:nth-child(odd) > td {background: #fff;}
+#exec-tbl table tbody > tr:nth-child(odd) > td {background-color: #fff;}
 /* #exec-tbl table tbody > tr:nth-child(even) > td {background: #efefef;} */
 
 #exec-tbl td table  {
