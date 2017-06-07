@@ -142,7 +142,8 @@ class Multiplier extends FunctionalUnitBaseClass {
                 this.result = this.instr!.vj * this.instr!.vk;
             break;
             case Op.DIV:
-                this.result = this.instr!.vj / this.instr!.vk;
+                /* Consistent with C */
+                this.result = Math.floor(this.instr!.vj / this.instr!.vk);
             break;
         }
     }
