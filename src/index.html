@@ -50,12 +50,13 @@
                                 </li>
 
                                 <li><p>Memory interface</p>
-                                    &nbsp;&nbsp;&nbsp;&nbsp;<span class="txt">All but REG := both Register or Immediate value.</span>
+                                    &nbsp;&nbsp;&nbsp;&nbsp;<span class="txt">REG := Register</span><br>
+                                    &nbsp;&nbsp;&nbsp;&nbsp;<span class="txt">VAL, ADDR := Register or Immediate value.</span>
                                     <ul>
-                                        <li>LDR BASE, OFFSET, REG<br>
+                                        <li>LDR ADDR, REG<br>
                                             &nbsp;&nbsp;&nbsp;&nbsp;<span class="txt">Page size := 1.<br>
                                         </li>
-                                        <li>STR OP1, DST</li>
+                                        <li>STR VAL, ADDR</li>
                                     </ul>
                                 </li>
 

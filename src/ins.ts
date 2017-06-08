@@ -15,6 +15,8 @@ class RawInstruction {
     ){}
 
     toString(): string {
+        if (this.op === Op.LOAD)
+            return `${OpString[this.op]} ${this.src0},${this.dst}`;
         return `${OpString[this.op]} ${this.src0}` +
             `${this.src1 ? ',' : ''}${this.src1}` +
             `${this.dst  ? ',' : ''}${this.dst}`;
@@ -80,7 +82,7 @@ StringOp['JZ']  = Op.JZ;
 StringOp['JNZ'] = Op.JNZ;
 
 let InstrLen: {[index:string]: number} = {}
-InstrLen['LDR'] = 3;
+InstrLen['LDR'] = 2;
 InstrLen['STR'] = 2;
 InstrLen['JMP'] = 1;
 InstrLen['JZ']  = 1;
@@ -115,10 +117,13 @@ function parse(src: string, rsize: number): Program {
                 throw new Error(`[${crow}] ${arg} is not a valid register`);
         }
 
-        prg.push(new RawInstruction(StringOp[cmd], args[0],
-                                    args.length > 1 ? args[1] : "",
-                                    args.length === 3 ? args[2] : "",
-                                    rowid++));
+        if (StringOp[cmd] === Op.LOAD)
+            prg.push(new RawInstruction(StringOp[cmd], args[0], '0', args[1], rowid++));
+        else
+            prg.push(new RawInstruction(StringOp[cmd], args[0],
+                                        args.length > 1 ? args[1] : "",
+                                        args.length === 3 ? args[2] : "",
+                                        rowid++));
     }
     return prg;
 }
