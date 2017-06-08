@@ -137,15 +137,52 @@ function main():void {
         setup();
     }
 
+    let stepFunc = () => {
+        pause();
+        if (STEP) STEP();
+        else alert('Please load a valid program first.');
+    }
+
     rdy.onclick = apply_conf.onclick = rst.onclick = resetFunc;
 
     play.onclick = playloop;
     pausebtn.onclick = pause;
-    one_step.onclick = () => {
-        pause();
-        if (STEP) STEP();
-        else alert('Please load a valid program first.');
-    };
+    one_step.onclick = stepFunc;
+
+    // keyboard support
+    document.addEventListener('keydown', (e) => {
+        switch (e.keyCode) {
+            case 34: // Page down (pointer right)
+            case 39: // Arrow right
+            case 78: // n
+            case 83: // s
+                stepFunc()
+                break;
+
+            case 33: // Page up (pointer left)
+            case 32: // space
+            case 13: // enter
+                if (LOOP !== -1) pause();
+                else playloop();
+                break;
+
+            case 116: // F5 (pointer bottom)
+            case 27: // ESC (pointer bottom alt.)
+            case 82: // r
+                resetFunc(e);
+                break;
+
+            case 187: // +
+            case 221: // ]
+                speed.value = String(parseInt(speed.value, 10) + safeInt(speed.getAttribute('step')!, 1));
+                break;
+
+            case 189: // -
+            case 219: // [
+                speed.value = String(parseInt(speed.value, 10) - safeInt(speed.getAttribute('step')!, 1));
+                break;
+        }
+    });
 
     setup();
 }
@@ -162,14 +199,15 @@ function playloop() {
 
 function pause() {
     document.body.classList.remove('playing');
-    if (LOOP) clearTimeout(LOOP);
+    if (LOOP !== -1) clearTimeout(LOOP);
+    LOOP = -1;
 }
 
 
 let safeInt = (s:string, fallback=0) => isNaN(parseInt(s, 10)) ? fallback : parseInt(s, 10);
 
 var STEP: (() => boolean) | null = null;
-var LOOP: number;
+var LOOP: number = -1;
 
 function setup() {
     STEP = null;
