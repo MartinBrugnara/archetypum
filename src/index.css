@@ -148,6 +148,17 @@ a.btn.blu {
   text-align: center;
 }
 
+#help ul {list-style-type: none;}
+#help > ul {padding-left: 0;}
+#help > ul > li {margin-bottom: 1.2em;}
+#help p {margin-bottom: 0.5em;}
+#help ul ul {
+  font-family: "Lucida Console", Monaco, monospace;
+  line-height: 1.2em;
+}
+
+#help ul ul .txt {font-family: Verdana, Geneva, sans-serif;}
+
 #tab-config .tab-body {
   padding: 0;
   height: 90%;

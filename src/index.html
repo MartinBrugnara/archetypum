@@ -29,30 +29,39 @@
                         --><div id="help">
                             <h4>Instruction set</h4>
                             <ul>
-                                <li>Integer arithmetic</li>
-                                <li>
+                                <li><p>Arithmetic</p>
+                                    &nbsp;&nbsp;&nbsp;&nbsp;OP1, OP2 <span class="txt">:= Register or Immediate value.</span><br>
+                                    &nbsp;&nbsp;&nbsp;&nbsp;DST <span class="txt">:= Register.</span>
                                     <ul>
-                                        <li>ADD</li>
-                                        <li>SUB</li>
-                                        <li>MUL</li>
-                                        <li>DIV</li>
+                                        <li>ADD OP1, OP2, DST</li>
+                                        <li>SUB OP1, OP2, DST</li>
+                                        <li>MUL OP1, OP2, DST</li>
+                                        <li>DIV OP1, OP2, DST</li>
                                     </ul>
                                 </li>
 
-                                <li>Flow control</li>
-                                <li>
+                                <li><p>Flow control</p>
+                                    &nbsp;&nbsp;&nbsp;&nbsp;ADDR<span class="txt">:= Instruction address (row #).</span>
                                     <ul>
-                                        <li>JMP</li>
-                                        <li>JZ</li>
-                                        <li>JNZ</li>
+                                        <li>JMP ADDR</li>
+                                        <li>JZ &nbsp;ADDR</li>
+                                        <li>JNZ ADDR</li>
                                     </ul>
                                 </li>
 
-                                <li>Memory interface</li>
-                                <li>
+                                <li><p>Memory interface</p>
+                                    &nbsp;&nbsp;&nbsp;&nbsp;<span class="txt">All but REG := both Register or Immediate value.</span>
                                     <ul>
-                                        <li>LOAD</li>
-                                        <li>STORE</li>
+                                        <li>LDR BASE, OFFSET, REG<br>
+                                            &nbsp;&nbsp;&nbsp;&nbsp;<span class="txt">Page size := 1.<br>
+                                        </li>
+                                        <li>STR OP1, DST</li>
+                                    </ul>
+                                </li>
+
+                                <li><p>Extra</p>
+                                    <ul>
+                                        <li>; comment</li>
                                     </ul>
                                 </li>
                             </ul>
