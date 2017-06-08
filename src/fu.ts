@@ -11,7 +11,7 @@ interface FunctionalUnit {
     getDue(clockTime: number): string;
 }
 
-enum FuKind {ADDER, MULTIPLIER, MEMORY, IU}
+enum FuKind {ADDER, MULTIPLIER, DIVIDER, MEMORY, IU}
 type KwArgs = {[key:string]: any}
 let FuMap: {[key:number]: (name:string, kwargs: KwArgs) => FunctionalUnit} = {}
 
@@ -137,18 +137,27 @@ class Multiplier extends FunctionalUnitBaseClass {
     }
 
     computeValue(): void {
-        switch (this.instr!.op) {
-            case Op.MUL:
-                this.result = this.instr!.vj * this.instr!.vk;
-            break;
-            case Op.DIV:
-                /* Consistent with C */
-                this.result = Math.floor(this.instr!.vj / this.instr!.vk);
-            break;
-        }
+        this.result = this.instr!.vj * this.instr!.vk;
     }
 }
 FuMap[FuKind.MULTIPLIER] = (name:string, kwargs: KwArgs) => new Multiplier(name, kwargs);
+
+class Divider extends FunctionalUnitBaseClass {
+    readonly duration = 4;
+
+    constructor(name: string, kwargs: KwArgs) {
+        super(FuKind.DIVIDER, name);
+        if ('duration' in kwargs)
+            this.duration = kwargs.duration;
+    }
+
+    computeValue(): void {
+        /* Consistent with C */
+        this.result = Math.floor(this.instr!.vj / this.instr!.vk);
+    }
+}
+FuMap[FuKind.DIVIDER] = (name:string, kwargs: KwArgs) => new Divider(name, kwargs);
+
 
 
 type FuConfig = [[FuKind, string, number, KwArgs]];

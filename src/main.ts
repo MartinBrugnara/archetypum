@@ -100,6 +100,8 @@ let iaddr: HTMLInputElement = <HTMLInputElement>document.getElementById('iaddr')
 let iaddrd: HTMLInputElement = <HTMLInputElement>document.getElementById('iaddrd')!;
 let imult: HTMLInputElement = <HTMLInputElement>document.getElementById('imult')!;
 let imultd: HTMLInputElement = <HTMLInputElement>document.getElementById('imultd')!;
+let idiv: HTMLInputElement = <HTMLInputElement>document.getElementById('idiv')!;
+let idivd: HTMLInputElement = <HTMLInputElement>document.getElementById('idivd')!;
 let ireg: HTMLInputElement  = <HTMLInputElement>document.getElementById('ri')!;
 let freg: HTMLInputElement  = <HTMLInputElement>document.getElementById('rf')!;
 let ied: HTMLInputElement   = <HTMLInputElement>document.getElementById('ied')!;
@@ -203,6 +205,7 @@ function setup() {
         [
             [FuKind.ADDER, 'ADDR', safeInt(iaddr.value, 3), {duration: safeInt(iaddrd.value, 2)}],
             [FuKind.MULTIPLIER, 'MULT', safeInt(imult.value, 3), {duration: safeInt(imultd.value, 4)}],
+            [FuKind.DIVIDER, 'DIV', safeInt(idiv.value, 3), {duration: safeInt(idivd.value, 6)}],
             [FuKind.MEMORY, 'MEM', 1, {'memMgm': memMgm, duration: safeInt(iaddrd.value, 2)}],
         ],
         {ints: safeInt(ireg.value), floats: safeInt(freg.value)},

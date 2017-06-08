@@ -98,8 +98,13 @@
                                         </tr>
                                         <tr class="row3">
                                             <td>multipliers</td>
-                                            <td># <input type="number" min="0" id="imult" value=3 size=2 max="99"></td>
+                                            <td># <input type="number" min="0" id="imult" value=2 size=2 max="99"></td>
                                             <td>latency <input type="number" min="0" id="imultd" value=4 size=2 max="99"></td>
+                                        </tr>
+                                        <tr class="row3">
+                                            <td>divider</td>
+                                            <td># <input type="number" min="0" id="idiv" value=1 size=2 max="99"></td>
+                                            <td>latency <input type="number" min="0" id="idivd" value=6 size=2 max="99"></td>
                                         </tr>
                                     </table>
                                 </div>
@@ -110,8 +115,8 @@
                                 <div>
                                     <header>Memory</header>
                                     <table class="inner-table">
-                                        <tr><td>read latency</td><td><input type="number" min="0" id="rl" value=1 size=2 max="99"></td></tr>
-                                        <tr><td>write latency</td><td><input type="number" min="0" id="wl" value=1 size=2 max="99"></td></tr>
+                                        <tr><td>read latency</td><td><input type="number" min="0" id="rl" value="10" size="2" max="99"></td></tr>
+                                        <tr><td>write latency</td><td><input type="number" min="0" id="wl" value="15" size="2" max="99"></td></tr>
                                     </table>
                                 </div>
                             </td>
