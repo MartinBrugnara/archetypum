@@ -126,18 +126,27 @@ class Graphics {
     renderREG(): string {
         let html:string[][] = [];
         var body:string[][] = [];
+
+        let tagMap: {[key:string]:string} = {};
+        if (this.emu.useRob)
+            for (let row of this.emu.ROB.cb)
+                tagMap[row[1].dst] = String(row[0]);
+
         html.push(
             ['<caption>Register Status (Q<sub>i</sub>)</caption>'],
             ['<thead><tr>'],
         );
         for (let key in this.emu.REG.regs) {
-            html.push(['<th>', key, '</th>']);
+            html.push(['<th colspan=2>', key, '</th>']);
             body.push([
                 '<td>',
-                (this.emu.REG.qi[key] === null ?  String(this.emu.REG.regs[key]) : this.emu.REG.qi[key]!),
+                    (this.emu.REG.qi[key] === null ?  String(this.emu.REG.regs[key]) : this.emu.REG.qi[key]!),
+                '</td>',
+                '<td>',
+                    key in tagMap ? 'T' + tagMap[key] : '-',
                 '</td>'
             ]);
-            if (!(body.length % 8)) {
+            if (!(body.length % 4)) {
                 html.push(
                     ['</tr></thead><tbody class="tech"><tr>'],
                     Array.prototype.concat.apply([], body),

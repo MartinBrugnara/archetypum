@@ -368,3 +368,6 @@ tr.current td { background-color: #ffec5e !important; }
   -webkit-transform: translate(-50%,0);
   transform: translate(-50%,0);
 }
+
+#reg tbody tr td:nth-child(even) {border-left: 0;}
+#reg tbody tr td:nth-child(odd) {border-right: 0;}
