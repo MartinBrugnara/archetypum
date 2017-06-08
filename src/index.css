@@ -58,6 +58,7 @@ a.tab-link {
   z-index: 100;
   background-color: #ffab40;
 }
+.tab.active .tab-link { color: #fff; }
 
 #main .tab:nth-child(2) .tab-link {left: 33.33%;}
 #main .tab:nth-child(3) .tab-link {left: 66.66%;}

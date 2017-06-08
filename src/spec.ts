@@ -59,18 +59,31 @@ BpMap['btfnt'] = (n:number, k:number ) => new BTFNT(n,k);
 class NBit extends BranchPredictor  {
     BHT:number[] = [];
     LastPred:boolean[] = [];
+    AddrTag:number[] = [];
 
+    reset(idx: number) {
+        this.BHT[idx] = this.N/2;
+        this.LastPred[idx] = false;
+        this.AddrTag[idx] = -1;
+    }
 
     constructor(readonly N:number, readonly K:number) {
         super(N, K);
         for (let k=0; k<K; k++) {
             this.BHT.push(N/2);
             this.LastPred.push(false);
+            this.AddrTag.push(-1);
         }
     }
 
     nextPc(instr: RawInstruction, flags: boolean[]): number {
         let idx = instr.rowid % this.K;
+
+        if (this.AddrTag[idx] !== instr.rowid) {
+            this.reset(idx);
+            this.AddrTag[idx] = instr.rowid;
+        }
+
         let pval = this.BHT[idx];
         this.LastPred[idx] = pval > this.N/2 || (pval === this.N/2 && this.LastPred[idx]);
         return this.LastPred[idx] ?  Number(instr.src0) : instr.rowid + 1;
@@ -79,10 +92,14 @@ class NBit extends BranchPredictor  {
     validateChoice(head: RobEntry, flags: boolean[]): number {
         let ret = super.validateChoice(head, flags);
 
+
         // Update local stats
         let idx = head.instr.rowid % this.K;
-        this.BHT[idx] += this.real(head.instr, flags) === Number(head.instr.src0) ? 1 : -1;
-        this.BHT[idx] = Math.max(0, Math.min(this.BHT[idx], this.N));
+
+        if (this.AddrTag[idx] === head.instr.rowid) {
+            this.BHT[idx] += this.real(head.instr, flags) === Number(head.instr.src0) ? 1 : -1;
+            this.BHT[idx] = Math.max(0, Math.min(this.BHT[idx], this.N));
+        }
 
         return ret;
     }

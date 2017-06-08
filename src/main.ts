@@ -62,6 +62,10 @@ function displayExamples() {
 
 }
 
+function getActiveTab(): string {
+    return document.getElementsByClassName('active')[0].id;
+}
+
 function setActiveTab(id: string): void {
     let next = document.getElementById(id);
     if (!next) return;
@@ -151,6 +155,11 @@ function main():void {
 
     // keyboard support
     document.addEventListener('keydown', (e) => {
+        // guards
+        if (e.srcElement && e.srcElement.id === 'raw-src') return;
+        if (getActiveTab() !== 'tab-exec') return;
+
+        // handler
         switch (e.keyCode) {
             case 34: // Page down (pointer right)
             case 39: // Arrow right
