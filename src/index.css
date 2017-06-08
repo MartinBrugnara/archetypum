@@ -122,6 +122,7 @@ a.btn.blu {
 #exlist li {display: inline}
 #exlist li:after {content:', '}
 #exlist li:last-child:after {content:''}
+#exlist a {text-decoration: underline;}
 
 #raw-wrap {
   display: block;
@@ -165,7 +166,7 @@ a.btn.blu {
 }
 
 #ctable {
-  height: 100%;
+  height: 496px;
   width: 100%;
   border-spacing: 15px;
 }

@@ -1,23 +1,38 @@
 
 let EXAMPLES: {[key:string]: string} = {
-    '1':
-`ADD   3,5,R0
-SUB  R0,2,R0
-MUL  R0,1,R1
-DIV  R1,3,R3
-`,
-    '2':
-`ADD   3,5,R0
-STR  42,R0
-LDR  R0,0,R1
-ADD  1,R1,R2
-`,
-    '3':
-`ADD   1,R0,R0
-SUB R0,5,R1
+    'Arithmetic speculation':
+`MUL 1,5,R0
+MUL 2,5,R1
+ADD 1,R5,R5
+MUL 4,5,R3
+SUB R5,5,R6
 JNZ 0
-ADD 42,0,R2
 `,
+
+    'Cache':
+`; INIT VALUES
+STR 0,0
+STR 1,1
+
+; FLUSH CACHE (4LOC)
+STR 0,2
+STR 0,3
+STR 0,4
+STR 0,5
+
+; MAIN
+LDR 0,0,R0
+LDR 1,0,R1
+ADD R0,R1,R2
+ADD R5,1,R5
+MUL R0,R1,R3
+SUB R5,4,R6
+STR R3,1
+STR R2,0
+JNZ 6
+`,
+
+
 };
 
 
@@ -158,7 +173,7 @@ function setup() {
     STEP = null;
     let program:Program;
     try {
-        program = parse(raw_src.value, safeInt(rsize.value, 0));
+        program = parse(raw_src.value, safeInt(ireg.value, 0));
     } catch (err) {
         alert(err.message);
         return;

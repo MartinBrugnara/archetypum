@@ -347,8 +347,9 @@ class MemoryMGM {
         }
 
         if (this.state === MgmIntState.WRITE) {
-            if (this.cache.write(clock, loc, value))
+            if (this.cache.write(clock, loc, value)) {
                 this.state = MgmIntState.FREE;
+            }
             return this.state === MgmIntState.FREE;
         }
 

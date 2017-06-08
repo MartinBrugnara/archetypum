@@ -200,7 +200,7 @@ class MemoryFU extends FunctionalUnitBaseClass {
         if (this.waiting && (clockTime >= (
                 this.issuedTime + Number(ISSUE_EXEC_DELAY)) +
                 // If offset, pay "addition" time
-                (this.instr!.op === Op.STORE && this.instr!.vk !== 0 ? this.duration : 0)
+                (this.instr!.op === Op.LOAD && this.instr!.vk !== 0 ? this.duration : 0)
             )
         ) {
             let done=false;

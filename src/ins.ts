@@ -112,7 +112,7 @@ function parse(src: string, rsize: number): Program {
             let reg = parseInt(arg.substring(1, arg.length), 10);
 
             if (!(!v || (arg[0] === 'R' && !isNaN(reg) && reg >= 0 && reg < rsize)))
-                throw new Error(`[${crow}] ${arg.substring(1, arg.length)} is not a valid register`);
+                throw new Error(`[${crow}] ${arg} is not a valid register`);
         }
 
         prg.push(new RawInstruction(StringOp[cmd], args[0],
