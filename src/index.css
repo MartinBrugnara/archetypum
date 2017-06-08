@@ -143,6 +143,7 @@ a.btn.blu {
   font-size: 1.25em;
   font-family: "Lucida Console", Monaco, monospace;
   text-transform: uppercase;
+  resize: none;
 }
 
 #raw-wrap h4 {
