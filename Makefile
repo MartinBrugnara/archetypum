@@ -1,8 +1,7 @@
 .PHONY: build, dist, lint, install
 
 SHELL=/bin/bash -O extglob 
-
-CSS=`cat ./src/index.css`
+NOW=`date '+%s'`
 
 build: dist clean 
 	cat ./src/!(main).ts ./src/main.ts > ./src/archetypum.ts
@@ -24,5 +23,5 @@ clean:
 
 demo: build
 	mkdir -p demo
-	cp -v dist/index.html demo/
-
+	cp -v dist/index.html demo/index_${NOW}.html
+	sed -i.bak -e "s/index_[0-9]*/index_${NOW}/" README.md

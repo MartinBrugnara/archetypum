@@ -17,3 +17,5 @@ src/*.js
 src/archetypum.ts
 
 .DS_Store
+
+*.bak
