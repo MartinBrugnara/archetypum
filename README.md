@@ -1,8 +1,8 @@
 # Archetypum 
 ### Tomasulo algorithm visualizer
 
-Online [demo](https://rawgit.com/MartinBrugnara/archetypum/master/demo/index_1496919688.html).   
-Self-contained single page application [download](https://raw.githubusercontent.com/MartinBrugnara/archetypum/master/demo/index_1496919688.html).
+Online [demo](https://rawgit.com/MartinBrugnara/archetypum/master/demo/index_1496998388.html).   
+Self-contained single page application [download](https://raw.githubusercontent.com/MartinBrugnara/archetypum/master/demo/index_1496998388.html).
 
 ### Keyboard bindings:
 

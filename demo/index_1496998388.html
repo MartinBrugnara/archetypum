@@ -1,0 +1,2086 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <title>Archetypum | Tomasulo algorithm visualizer</title>
+        <meta name="author" content="Martin Brugnara<mb@disi.unitn.it>, Gianluca Bortoli <gianluca.bortoli@unitn.it>">
+        <meta name="keyword" content="Tomasulo, Tomasulo algorithm, visualizer, reservation station, ROB">
+        <meta name="description" content="Higly parametrized Tomasulo algorithm visualizer">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <style type="text/css">
+* {
+  box-sizing: border-box;
+  vertical-align: middle; /* Otherwise f**king tables does not align */
+}
+
+html {
+  font-family: Verdana, Geneva, sans-serif;
+  font-size: 13px;
+}
+
+a, a:link, a:visited, a:hover, a:active {
+  text-transform: none;
+  text-decoration: none;
+  color: #000;
+}
+
+a:hover {cursor: pointer}
+
+#main {
+  position: relative;
+  display: block;
+  width: 800px;
+  height: 600px;
+  border: 1px solid #777;
+}
+
+a.tab-link {
+  display: block;
+  position: relative;
+  top: -2rem;
+  width: 33.33%;
+  height: 2rem;
+  line-height: 2rem;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.tab-link:hover {
+  cursor: pointer;
+  background-color: #ffec5e;
+}
+
+.tab {
+  display:block;
+  position: absolute;
+  width: 100%;
+  top: 2rem;
+  bottom: 1.5rem;
+}
+
+.tab-body {
+  margin-top: -2rem;
+  padding: 20px;
+  line-height: 1em;
+}
+
+.tab.active, .tab.active .tab-link {
+  z-index: 100;
+  background-color: #ffab40;
+}
+.tab.active .tab-link { color: #fff; }
+
+#main .tab:nth-child(2) .tab-link {left: 33.33%;}
+#main .tab:nth-child(3) .tab-link {left: 66.66%;}
+
+
+#main > footer {
+  position: absolute;
+  bottom: 0;
+  width: 100%;
+  height: 1.5rem;
+  line-height: 1.5rem;
+  text-align: center;
+  font-size: 0.8rem;
+}
+
+#main > footer a {font-weight: bold;}
+
+#octocat {
+  display: inline-block;
+  height: 14px;
+  width: 14px;
+  vertical-align: text-bottom;
+  background-size: 100% 100%;
+  background-image: url('data:image/png;base64,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');
+}
+
+/* -------------------------------------------------------------------------- */
+a.btn {
+    display: inline-block;
+    zoom: 1;
+    white-space: nowrap;
+    vertical-align: middle;
+    text-align: center;
+    cursor: pointer;
+    -webkit-user-drag: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+    font-size: 1.5em;
+    padding: .5em 1em;
+    line-height: 1em;
+    border-radius: 2px;
+    text-transform: uppercase;
+}
+
+a.btn.blu {
+    background-color: #0078e7;
+    color: #fff;
+}
+
+
+
+
+/* -------------------------------------------------------------------------- */
+#exlist {
+  display: inline-block;
+  list-style-type: none;
+  margin: 0;
+  padding: 0;
+}
+#exlist li {display: inline}
+#exlist li:after {content:', '}
+#exlist li:last-child:after {content:''}
+#exlist a {text-decoration: underline;}
+
+#raw-wrap {
+  display: block;
+  margin:auto;
+  margin-top: 0;
+  margin-bottom: 1em;
+}
+
+#raw-wrap > * {
+  display: inline-block;
+  width: 50%;
+  vertical-align: top;
+}
+
+#raw-src {
+  display: block;
+  margin: auto;
+  font-size: 1.25em;
+  font-family: "Lucida Console", Monaco, monospace;
+  text-transform: uppercase;
+  resize: none;
+}
+
+#raw-wrap h4 {
+  text-align: center;
+}
+
+#help ul {list-style-type: none;}
+#help > ul {padding-left: 0;}
+#help > ul > li {margin-bottom: 1.2em;}
+#help p {margin-bottom: 0.5em;}
+#help ul ul {
+  font-family: "Lucida Console", Monaco, monospace;
+  line-height: 1.2em;
+}
+
+#help ul ul .txt {font-family: Verdana, Geneva, sans-serif;}
+
+#tab-config .tab-body {
+  padding: 0;
+  height: 90%;
+}
+
+#ctable {
+  height: 496px;
+  width: 100%;
+  border-spacing: 15px;
+}
+
+#ctable td {
+  border: 1px solid #fff;
+  width: 50%;
+  height: 33.33%;
+}
+
+#ctable td > div {
+  height: 100%;
+  width: 100%;
+}
+
+#ctable header {
+  position: relative;
+  top: -0.7em;
+  background-color: #ffab40;
+  padding-left: .75em;
+  padding-right: .75em;
+  left: 1em;
+  width: auto;
+  display: inline-block;
+}
+
+.inner-table {
+  width: 100%;
+  height: 100%;
+  margin-top: -0.5em;
+  border-spacing: 10px;
+  text-align: center;
+}
+
+#ctable .inner-table td {
+  border: none;
+}
+
+#ctable .inner-table tr.row3 td {width: 33.33%}
+
+/* -------------------------------------------------------------------------- */
+#control-bar {
+  display: block;
+  width: 798px;
+  height: 2.5rem;
+  margin: -10px 0 10px 0;
+  background: white;
+  /* box-shadow: 0 4px 5px 0 rgba(0,0,0,0.14), 0 1px 10px 0 rgba(0,0,0,0.12), 0 2px 4px -1px rgba(0,0,0,0.3); */
+  box-shadow: 0 2px 2px 0 rgba(0,0,0,0.14), 0 1px 5px 0 rgba(0,0,0,0.12), 0 3px 1px -2px rgba(0,0,0,0.2);
+  border-collapse: collapse;
+}
+
+#control-bar > table {
+  width: 720px;
+  margin-left: 40px;
+}
+
+#control-bar > table td {
+  width: 33.33%;
+}
+
+#control-bar > table td:nth-child(2) {text-align: center;}
+#control-bar > table td:nth-child(3) {text-align: right;}
+
+.icon {
+  display: inline-block;
+  width: 28px;
+  height: 28px;
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+  background-position: center;
+}
+
+.icon.clock {background-image: url('data:image/svg+xml;utf8,<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M0 0h24v24H0z" fill="none"/><path d="M22 5.72l-4.6-3.86-1.29 1.53 4.6 3.86L22 5.72zM7.88 3.39L6.6 1.86 2 5.71l1.29 1.53 4.59-3.85zM12.5 8H11v6l4.75 2.85.75-1.23-4-2.37V8zM12 4c-4.97 0-9 4.03-9 9s4.02 9 9 9c4.97 0 9-4.03 9-9s-4.03-9-9-9zm0 16c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7z"/></svg>');}
+.icon.reset {background-image: url('data:image/svg+xml;utf8,<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46C19.54 15.03 20 13.57 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74C4.46 8.97 4 10.43 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z"/><path d="M0 0h24v24H0z" fill="none"/></svg>');}
+.icon.pause {background-image: url('data:image/svg+xml;utf8,<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/><path d="M0 0h24v24H0z" fill="none"/></svg>');}
+.icon.play {background-image: url('data:image/svg+xml;utf8,<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M8 5v14l11-7z"/><path d="M0 0h24v24H0z" fill="none"/></svg>');}
+.icon.play-circle {background-image: url('data:image/svg+xml;utf8,<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M0 0h24v24H0z" fill="none"/><path d="M10 16.5l6-4.5-6-4.5v9zM12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/></svg>');}
+.icon.play-circle-fill {background-image: url('data:image/svg+xml;utf8,<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M0 0h24v24H0z" fill="none"/><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/></svg>');}
+.icon.pc {background-image: url('data:image/svg+xml;utf8,<svg enable-background="new 0 0 24 24" id="Layer_1" version="1.1" viewBox="0 0 24 24" x="0px" xml:space="preserve" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" y="0px"><g id="XMLID_1_"><path d="M0,0h24v24H0V0z" fill="none"/><g id="XMLID_2_"><rect height="2" id="XMLID_3_" width="12" x="4" y="10"/><rect height="2" id="XMLID_4_" width="12" x="4" y="6"/><rect height="2" id="XMLID_5_" width="8" x="4" y="14"/><polygon id="XMLID_6_" points="14,14 14,20 19,17   "/></g></g></svg>');}
+.icon.step {background-image: url('data:image/svg+xml;utf8,<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/><path d="M0 0h24v24H0z" fill="none"/></svg>');}
+.icon.speed {background-image: url('data:image/svg+xml;utf8,<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 87.607 87.607" style="enable-background:new 0 0 87.607 87.607;" xml:space="preserve"><g><g><g><path d="M52.173,57.876c-0.028-0.329-0.122-0.658-0.286-0.971L31.254,17.971c-0.609-1.144-1.983-1.684-3.229-1.267 c-1.248,0.423-1.993,1.674-1.756,2.95l8.041,43.173c0.063,0.343,0.196,0.65,0.377,0.93c0.078,0.369,0.173,0.736,0.3,1.104 c1.295,3.694,4.838,6.184,8.813,6.184c1.027,0,2.048-0.166,3.024-0.497c2.354-0.792,4.253-2.438,5.347-4.636 c1.095-2.198,1.251-4.68,0.444-6.994C52.492,58.555,52.34,58.21,52.173,57.876z M43.803,19.533c-1.471,0-2.662,1.17-2.662,2.613 c0,1.443,1.191,2.614,2.662,2.614c21.218,0,38.476,16.961,38.476,37.806c0,1.442,1.195,2.613,2.664,2.613 c1.473,0,2.664-1.171,2.664-2.613C87.605,38.834,67.956,19.533,43.803,19.533z M16.276,29.087C5.933,37.306,0,49.507,0,62.565 c0,1.443,1.191,2.615,2.663,2.615c1.474,0,2.665-1.172,2.665-2.615c0-11.47,5.211-22.189,14.298-29.409 c1.146-0.908,1.32-2.556,0.397-3.679C19.1,28.355,17.423,28.179,16.276,29.087z"/></g></g></g></svg>');}
+
+body.playing #play {display:none}
+body:not(.playing) #pause {display:none}
+
+
+#clock, #pc {
+  font-family: "Lucida Console", Monaco, monospace;
+  font-size: 1.5em;
+}
+
+#exec-tbl {
+  width: 100%;
+  height: 490px;
+  border-collapse: collapse;
+  border-spacing: 0;
+}
+
+#exec-tbl table caption,
+#exec-tbl table th {
+  padding-bottom: 2px;
+}
+#exec-tbl table td {
+  border: 1px solid #000;
+  background-color: #dfdfdf;
+}
+
+#exec-tbl > tr > td:nth-child(2),
+#exec-tbl > tr > td:nth-child(3) {
+  width: 50%;
+  height: 50%;
+}
+
+#exec-tbl td {
+  vertical-align: top;
+}
+
+#exec-tbl table {
+  border-spacing: 0;
+  border-collapse: collapse;
+  margin: auto;
+}
+
+#exec-tbl table td {
+  font-size: 14px;
+  font-family: "Lucida Console", Monaco, monospace;
+  padding: 5px 4px 4px 4px;
+  min-width:32px;
+  text-align: center;
+}
+
+#exec-tbl table caption, #exec-tbl table thead th {
+  text-transform: capitalize;
+}
+
+#exec-tbl table tbody > tr:nth-child(odd) > td {background-color: #fff;}
+/* #exec-tbl table tbody > tr:nth-child(even) > td {background: #efefef;} */
+
+#exec-tbl td table  {
+  vertical-align: top
+}
+
+#sourcecode tr > td:nth-child(2),
+#scexec tr > td:nth-child(2),
+#rob tr > td:nth-child(2) {
+  width: 111px;
+  text-align: left;
+}
+
+#tab-exec .tab-body {
+  padding: 20px 0 10px 0;
+}
+
+.scrollable {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow-y: scroll;
+  overflow-x: hidden;
+}
+
+#cache tr > td:nth-child(2),
+#cache tr > td:nth-child(3),
+#cache tr > td:nth-child(5),
+#cache tr > td:nth-child(6) {
+  border-right: transparent;
+  border-left: transparent;
+}
+#cache tr > td:nth-child(4),
+#cache tr > td:nth-child(7) {
+  border-left: transparent;
+}
+
+
+.tick, .busy {
+  background-image: url('data:image/svg+xml;utf8,<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" viewBox="0 0 1000 1000" enable-background="new 0 0 1000 1000" xml:space="preserve"><g><path d="M990,190.6l-65.5-63.2L335.2,743.9L73.2,493.2L10,561l327.4,311.6l63.2-67.7l0,0L990,190.6z"/></g></svg>');
+  background-repeat: no-repeat;
+  background-size: 60% 60%;
+  background-position: center;
+}
+
+tr.current td { background-color: #ffec5e !important; }
+
+.new-val {
+  color: mediumvioletred;
+  font-weight: bold;
+}
+
+.flushed {text-decoration: line-through}
+
+.act-btn {
+  position: absolute;
+  bottom: 15px;
+  left: 400px;
+  -ms-transform: translate(-50%,0);
+  -webkit-transform: translate(-50%,0);
+  transform: translate(-50%,0);
+}
+
+#reg tbody tr td:nth-child(even) {border-left: 0;}
+#reg tbody tr td:nth-child(odd) {border-right: 0;}
+        </style>
+    </head>
+    <body>
+        <div id="main">
+            <section id="tab-source" class="tab">
+                <a href="#tab-source" class="tab-link">source code</a>
+                <section class="tab-body">
+                    <header>
+                        <h3>Please type your program or select an example.</h3>
+                        <span>Examples: </span><ul id="exlist"></ul>
+                    </header>
+
+                    <div id="raw-wrap"><!--
+                        --><div>
+                            <h4>Source</h4>
+                            <textarea class="tech" id="raw-src" cols="25" rows="17"></textarea>
+                        </div><!--
+                        --><div id="help">
+                            <h4>Instruction set</h4>
+                            <ul>
+                                <li><p>Arithmetic</p>
+                                    &nbsp;&nbsp;&nbsp;&nbsp;OP1, OP2 <span class="txt">:= Register or Immediate value.</span><br>
+                                    &nbsp;&nbsp;&nbsp;&nbsp;DST <span class="txt">:= Register.</span>
+                                    <ul>
+                                        <li>ADD OP1, OP2, DST</li>
+                                        <li>SUB OP1, OP2, DST</li>
+                                        <li>MUL OP1, OP2, DST</li>
+                                        <li>DIV OP1, OP2, DST</li>
+                                    </ul>
+                                </li>
+
+                                <li><p>Flow control</p>
+                                    &nbsp;&nbsp;&nbsp;&nbsp;ADDR<span class="txt">:= Instruction address (row #).</span>
+                                    <ul>
+                                        <li>JMP ADDR</li>
+                                        <li>JZ &nbsp;ADDR</li>
+                                        <li>JNZ ADDR</li>
+                                    </ul>
+                                </li>
+
+                                <li><p>Memory interface</p>
+                                    &nbsp;&nbsp;&nbsp;&nbsp;<span class="txt">REG := Register</span><br>
+                                    &nbsp;&nbsp;&nbsp;&nbsp;<span class="txt">VAL, ADDR := Register or Immediate value.</span>
+                                    <ul>
+                                        <li>LDR ADDR, REG<br>
+                                            &nbsp;&nbsp;&nbsp;&nbsp;<span class="txt">Page size := 1.<br>
+                                        </li>
+                                        <li>STR VAL, ADDR</li>
+                                    </ul>
+                                </li>
+
+                                <li><p>Extra</p>
+                                    <ul>
+                                        <li>; comment</li>
+                                    </ul>
+                                </li>
+                            </ul>
+                        </div><!--
+                    --></div>
+                    <a href="#" id="rdy" class="act-btn btn blu">load</a>
+                </section>
+            </section>
+
+            <section id="tab-config" class="tab">
+                <a href="#tab-config" class="tab-link">configuration</a>
+                <section class="tab-body">
+                    <table id="ctable">
+                        <tr>
+                            <td>
+                                <div>
+                                    <header>Register File</header>
+                                    <table class="inner-table">
+                                        <tr>
+                                            <td>registers</td>
+                                            <td># <input type="number" min="0" id="ri" value="8" size="2" max="99"></td>
+                                        </tr>
+                                    </table>
+                                </div>
+                            </td>
+                            <td>
+                                <div>
+                                    <header>Functional Units</header>
+                                    <table class="inner-table">
+                                        <tr class="row3">
+                                            <td>adders</td>
+                                            <td># <input type="number" min="0" id="iaddr" value=3 size=2 max="99"></td>
+                                            <td>latency <input type="number" min="0" id="iaddrd" value=2 size=2 max="99"></td>
+                                        </tr>
+                                        <tr class="row3">
+                                            <td>multipliers</td>
+                                            <td># <input type="number" min="0" id="imult" value=2 size=2 max="99"></td>
+                                            <td>latency <input type="number" min="0" id="imultd" value=4 size=2 max="99"></td>
+                                        </tr>
+                                        <tr class="row3">
+                                            <td>divider</td>
+                                            <td># <input type="number" min="0" id="idiv" value=1 size=2 max="99"></td>
+                                            <td>latency <input type="number" min="0" id="idivd" value=6 size=2 max="99"></td>
+                                        </tr>
+                                    </table>
+                                </div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>
+                                <div>
+                                    <header>Memory</header>
+                                    <table class="inner-table">
+                                        <tr><td>read latency</td><td><input type="number" min="0" id="rl" value="10" size="2" max="99"></td></tr>
+                                        <tr><td>write latency</td><td><input type="number" min="0" id="wl" value="15" size="2" max="99"></td></tr>
+                                    </table>
+                                </div>
+                            </td>
+                            <td>
+                                <div>
+                                    <header>Cache</header>
+                                    <table class="inner-table">
+                                        <tr>
+                                            <td>algorithm</td>
+                                            <td><select id="cache_alg"><option value="no-cache">no cache</option><option value="nwayset_wb" selected>n-way w.back</option><option value="nwayset_wt">n-way w.through</option></select></td>
+                                        </tr>
+                                        <tr>
+                                            <td>N (ways) <input type="number" min="0" id="nways" value=2 size=2 max="99"></td>
+                                            <td>size <input type="number" min="0" id="csize" value=4 size=2 max="99"></td>
+                                        </tr>
+                                        <tr>
+                                            <td>read latency <input type="number" min="0" id="crl" value=0 size=2 max="99"></td>
+                                            <td>write latency <input type="number" min="0" id="cwl" value=0 size=2 max="99"></td>
+                                        </tr>
+                                    </table>
+                                </div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>
+                                <div>
+                                    <header>Pipeline</header>
+                                    <table class="inner-table">
+                                        <tr><td>issue-exec delay</td><td><input id="ied" type="checkbox" checked></td></tr>
+                                        <tr><td>exec-write delay</td><td><input id="ewd" type="checkbox" checked></td></tr>
+                                        <tr><td>ROB (<small>0 = disabled</small>)</td><td>size <input type="number" min="0" id="rsize" value=8 size=2 max="99"></td>
+                                    </table>
+                                </div>
+                            </td>
+                            <td>
+                                <div>
+                                    <header>Branch Predictor</header>
+                                    <table class="inner-table">
+                                        <tr>
+                                            <td>kind</td>
+                                            <td><select id="bp"><optgroup label="Static predictors"><option value="non">Non speculative</option><option value="at">Always taken</option><option value="ant">Always not taken</option><option value="btfnt">BTFNT</option></optgroup><optgroup label="Dinamic predictors"><option value="nbit" selected>n-bit</option></optgroup></select></td>
+                                        </tr>
+                                        <tr><td>N (bits)</td><td><input type="number" id="nbit_n" value=2 size=2 min=0 max="99"></td></tr>
+                                        <tr><td>K (size)</td><td><input type="number" id="nbit_k" value=4 size=2 min=0 max="99"></td></tr>
+                                    </table>
+                                </div>
+                            </td>
+                        </tr>
+                    </table>
+                </section>
+
+                <input type="hidden" min="0" id="rf" value="0" size="2" max="99">
+                <a href="#" id="apply_conf" class="act-btn btn blu">apply</a>
+            </section>
+
+            <section id="tab-exec" class="tab active">
+                <a href="#tab-exec" class="tab-link">execution</a>
+                <section class="tab-body">
+                    <header id="control-bar">
+                        <table>
+                            <tr>
+                                <td>
+                                    <i class="icon clock"></i><span id="clock">0</span>
+                                    &nbsp;
+                                    <i class="icon pc"></i><span id="pc">0</span>
+                                </td>
+                                <td>
+                                    <a id="reset"><i class="icon reset"></i></a>
+                                    <a id="play"><i class="icon play"></i></a>
+                                    <a id="pause"><i class="icon pause"></i></a>
+                                    <a id="step"><i class="icon step"></i></a>
+                                </td>
+                                <td>
+                                    <i class="icon speed"></i>
+                                    <input id="speed" type="range" min="1" max="20" step="1" value="5" />
+                                </td>
+                            </tr>
+                        </table>
+                    </header>
+
+                    <table id="exec-tbl">
+                        <tr>
+                            <td rowspan="2">
+                                <div class="scrollable" id="scroll_source">
+                                    <table id="sourcecode_tbl">
+                                        <caption>Source Code</caption>
+                                        <thead>
+                                            <tr>
+                                                <th>#</th>
+                                                <th>Instruction</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody class="tech" id="sourcecode">
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="scrollable" id="scroll_exec">
+                                    <table id="exec_tbl">
+                                        <caption>Execution</caption>
+                                        <thead>
+                                            <tr>
+                                                <th>#</th>
+                                                <th>Instruction</th>
+                                                <th>Issue</th>
+                                                <th>Exec</th>
+                                                <th>Write</th>
+                                                <th>Commit</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody class="tech" id="scexec">
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="scrollable">
+                                    <table id="rob">
+                                    </table>
+                                </div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>
+                                <div class="scrollable">
+                                    <table>
+                                        <caption>Reservation Stations</caption>
+                                        <thead>
+                                            <tr>
+                                                <th>Name</th>
+                                                <th>Busy</th>
+                                                <th>Op</th>
+                                                <th>V<sub>j</sub></th>
+                                                <th>V<sub>k</sub></th>
+                                                <th>Q<sub>j</sub></th>
+                                                <th>Q<sub>k</sub></th>
+                                                <th>tag</th>
+                                                <th>due</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody class="tech" id="rs">
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="scrollable">
+                                    <div>
+                                        <table id="reg">
+                                        </table>
+                                    </div>
+
+                                    <br>
+                                    <br>
+
+                                    <div>
+                                        <table id="cache">
+                                        </table>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                    </table>
+                </section>
+            </section>
+            <footer>
+                Made by <a href="mailto:mb@disi.unitn.it">Martin Brugnara</a> and <a href="mailto:gianluca.bortoli@unitn.it">Gianluca Bortoli</a>
+                <a href="https://github.com/MartinBrugnara/archetypum" target="_blank"><i id="octocat" alt="octocat"></i></a>
+            </footer>
+        </div>
+
+        <script type="text/javascript">
+"use strict";
+class CircularBuffer {
+    constructor(size) {
+        this.head = 0;
+        this.tail = 0;
+        this.availableData = 0;
+        this.nextTag = () => this.tail;
+        this[Symbol.iterator] = function (me) {
+            return function* () {
+                for (let idx = 0; idx < me.availableData; idx++) {
+                    let i = (me.head + idx) % me.buffer.length;
+                    yield [i, me.buffer[i]];
+                }
+            };
+        }(this);
+        this.reverse = function (me) {
+            return function* () {
+                for (let idx = me.availableData - 1; idx >= 0; idx--) {
+                    let i = (me.head + idx) % me.buffer.length;
+                    yield [i, me.buffer[i]];
+                }
+            };
+        }(this);
+        this.buffer = new Array(size);
+    }
+    isEmpty() { return this.availableData === 0; }
+    isFull() { return this.availableData === this.buffer.length; }
+    push(data) {
+        if (this.isFull())
+            return -1;
+        let idx = this.tail % this.buffer.length;
+        this.buffer[idx] = data;
+        this.tail = (this.tail + 1) % this.buffer.length;
+        this.availableData++;
+        return idx;
+    }
+    pop() {
+        if (this.isEmpty())
+            return null;
+        let data = this.buffer[this.head % this.buffer.length];
+        this.head = (this.head + 1) % this.buffer.length;
+        this.availableData--;
+        return data;
+    }
+}
+class CdbMessage {
+    constructor(rsName, result, dst) {
+        this.rsName = rsName;
+        this.result = result;
+        this.dst = dst;
+    }
+}
+class Emulator {
+    constructor(fuConf, regConf, robSize, cache, memMgm, IU, program) {
+        this.cache = cache;
+        this.memMgm = memMgm;
+        this.IU = IU;
+        this.program = program;
+        this.clock = 0;
+        this.pc = 0;
+        this.uid = 0;
+        this.useRob = false;
+        this.hist = [];
+        this.REG = new Register(regConf);
+        this.FUs = FuFactory(fuConf);
+        if (robSize) {
+            this.ROB = new Rob(robSize, memMgm, IU);
+            this.useRob = true;
+        }
+    }
+    step() {
+        this.CDB = new Queue();
+        this.clock += 1;
+        if (this.pc < this.program.length) {
+            let rawInst = this.program[this.pc];
+            let re = new RobEntry(rawInst, rawInst.dst, this.uid);
+            let inst = this.REG.patch(rawInst, this.useRob ? this.ROB.patcher : this.REG.patcher, this.uid);
+            if (!this.useRob || !this.ROB.isFull()) {
+                if (this.useRob)
+                    inst.tag = this.ROB.nextTag();
+                let issued = false;
+                let name = '';
+                if (OpKindMap[inst.op] === FuKind.IU) {
+                    if (this.IU.speculative ||
+                        (!this.IU.speculative && this.ROB.isEmpty()) ||
+                        inst.op === Op.JMP) {
+                        this.pc = this.IU.nextPc(rawInst, this.REG.FLAGS);
+                        re.ready = this.clock;
+                        re.value = this.pc;
+                        issued = true;
+                    }
+                    name = 'IU';
+                }
+                else {
+                    for (let fu of this.FUs) {
+                        if (fu.tryIssue(this.clock, inst)) {
+                            issued = true;
+                            this.pc++;
+                            name = fu.name;
+                            break;
+                        }
+                    }
+                }
+                if (issued) {
+                    this.hist.push(clone(rawInst));
+                    this.hist[this.uid].issued = this.clock;
+                    if (this.useRob) {
+                        this.ROB.push(re);
+                    }
+                    else {
+                        this.REG.setProducer(inst, name);
+                    }
+                    this.uid++;
+                }
+            }
+        }
+        for (let fu of this.FUs) {
+            let rowid = fu.execute(this.clock);
+            if (rowid >= 0)
+                this.hist[rowid].executed = this.clock;
+        }
+        for (let fu of this.FUs) {
+            let rowid = fu.writeResult(this.clock, this.CDB);
+            if (rowid >= 0)
+                this.hist[rowid].written = this.clock;
+        }
+        for (let fu of this.FUs)
+            fu.readCDB(this.CDB);
+        if (this.useRob) {
+            this.ROB.readCDB(this.clock, this.CDB);
+            let res = this.ROB.commit(this.clock, this.REG);
+            if (res.uid !== -1)
+                this.hist[res.uid].committed = this.clock;
+            if (res.flush !== -1) {
+                for (let re of this.ROB.cb)
+                    this.hist[re[1].uid].flushed = true;
+                this.ROB.flush();
+                for (let fu of this.FUs)
+                    fu.flush();
+                this.memMgm.flush();
+                this.pc = res.flush;
+            }
+        }
+        else {
+            this.REG.readCDB(this.CDB);
+        }
+        for (let fu of this.FUs)
+            if (fu.isBusy())
+                return true;
+        if (this.useRob && !this.ROB.isEmpty())
+            return true;
+        return this.pc < this.program.length;
+    }
+}
+var FuKind;
+(function (FuKind) {
+    FuKind[FuKind["ADDER"] = 0] = "ADDER";
+    FuKind[FuKind["MULTIPLIER"] = 1] = "MULTIPLIER";
+    FuKind[FuKind["DIVIDER"] = 2] = "DIVIDER";
+    FuKind[FuKind["MEMORY"] = 3] = "MEMORY";
+    FuKind[FuKind["IU"] = 4] = "IU";
+})(FuKind || (FuKind = {}));
+let FuMap = {};
+class FunctionalUnitBaseClass {
+    constructor(kind, name) {
+        this.kind = kind;
+        this.name = name;
+        this.instr = null;
+        this.issuedTime = -1;
+        this.endTime = -1;
+    }
+    getDue(clockTime) {
+        let due = this.endTime >= clockTime ?
+            (this.endTime - clockTime - 1) :
+            this.duration;
+        return String(due);
+    }
+    getInstr() {
+        return this.instr;
+    }
+    tryIssue(clockTime, instr) {
+        if (this.kind !== instr.kind() || this.isBusy())
+            return false;
+        this.instr = instr;
+        this.issuedTime = clockTime;
+        return true;
+    }
+    execute(clockTime) {
+        if (this.isBusy() && this.isReady()
+            && (!this.endTime || this.endTime < clockTime)
+            && (clockTime >= (this.issuedTime + Number(ISSUE_EXEC_DELAY)))) {
+            this.endTime = clockTime + this.duration + Number(EXEC_WRITE_DELAY);
+            return this.instr.uid;
+        }
+        return -1;
+    }
+    computeValue() {
+        throw new Error('Implement in child');
+    }
+    writeResult(clockTime, cdb) {
+        if (this.isBusy && this.endTime === clockTime) {
+            this.computeValue();
+            cdb.push(new CdbMessage(this.instr.tag || this.name, this.result, this.instr.dst));
+            let uid = this.instr.uid;
+            this.instr = null;
+            return uid;
+        }
+        return -1;
+    }
+    isBusy() {
+        return !!this.instr;
+    }
+    isReady() {
+        return this.instr.qj === null && this.instr.qk === null;
+    }
+    readCDB(cdb) {
+        if (this.instr === null)
+            return;
+        if (!this.isBusy || (this.instr.qj === null && this.instr.qk === null))
+            return;
+        for (let msg of cdb) {
+            if (this.instr.qj !== null && this.instr.qj === msg.rsName) {
+                this.instr.vj = msg.result;
+                this.instr.qj = null;
+            }
+            if (this.instr.qk !== null && this.instr.qk === msg.rsName) {
+                this.instr.vk = msg.result;
+                this.instr.qk = null;
+            }
+        }
+    }
+    flush() {
+        this.instr = null;
+        this.issuedTime = -1;
+        this.endTime = -1;
+    }
+}
+class Adder extends FunctionalUnitBaseClass {
+    constructor(name, kwargs) {
+        super(FuKind.ADDER, name);
+        this.duration = 2;
+        if ('duration' in kwargs)
+            this.duration = kwargs.duration;
+    }
+    computeValue() {
+        switch (this.instr.op) {
+            case Op.ADD:
+                this.result = this.instr.vj + this.instr.vk;
+                break;
+            case Op.SUB:
+                this.result = this.instr.vj - this.instr.vk;
+                break;
+        }
+    }
+}
+FuMap[FuKind.ADDER] = (name, kwargs) => new Adder(name, kwargs);
+class Multiplier extends FunctionalUnitBaseClass {
+    constructor(name, kwargs) {
+        super(FuKind.MULTIPLIER, name);
+        this.duration = 4;
+        if ('duration' in kwargs)
+            this.duration = kwargs.duration;
+    }
+    computeValue() {
+        this.result = this.instr.vj * this.instr.vk;
+    }
+}
+FuMap[FuKind.MULTIPLIER] = (name, kwargs) => new Multiplier(name, kwargs);
+class Divider extends FunctionalUnitBaseClass {
+    constructor(name, kwargs) {
+        super(FuKind.DIVIDER, name);
+        this.duration = 4;
+        if ('duration' in kwargs)
+            this.duration = kwargs.duration;
+    }
+    computeValue() {
+        this.result = Math.floor(this.instr.vj / this.instr.vk);
+    }
+}
+FuMap[FuKind.DIVIDER] = (name, kwargs) => new Divider(name, kwargs);
+function FuFactory(conf) {
+    let fus = [];
+    for (let fuc of conf) {
+        for (let i = 0; i < fuc[2]; i++) {
+            fus.push(FuMap[fuc[0]](`${fuc[1]}${i}`, fuc[3]));
+        }
+    }
+    return fus;
+}
+class MemoryFU extends FunctionalUnitBaseClass {
+    constructor(name, kwargs) {
+        super(FuKind.MEMORY, name);
+        this.waiting = false;
+        this.startTime = null;
+        this.duration = 0;
+        this.memMgm = kwargs['memMgm'];
+        this.duration = kwargs['duration'];
+    }
+    execute(clockTime) {
+        let starting = false;
+        if (this.isBusy() && this.isReady() &&
+            (!this.endTime || this.endTime < clockTime) &&
+            (clockTime >= (this.issuedTime + Number(ISSUE_EXEC_DELAY))) &&
+            !this.waiting) {
+            this.waiting = true;
+            starting = true;
+        }
+        if (this.waiting && (clockTime >= (this.issuedTime + Number(ISSUE_EXEC_DELAY)) +
+            (this.instr.op === Op.LOAD && this.instr.vk !== 0 ? this.duration : 0))) {
+            let done = false;
+            switch (this.instr.op) {
+                case Op.LOAD:
+                    let value = this.memMgm.read(this.name, clockTime, this.instr.vj + this.instr.vk);
+                    if (value !== null) {
+                        this.result = value;
+                        done = true;
+                    }
+                    break;
+                case Op.STORE:
+                    done = this.memMgm.write(this.name, clockTime, this.instr.vj, this.instr.vk);
+                    this.instr.dst = String(this.instr.vk);
+                    this.result = this.instr.vj;
+                    break;
+            }
+            if (done) {
+                this.endTime = clockTime + Number(EXEC_WRITE_DELAY);
+                this.waiting = false;
+            }
+        }
+        return starting ? this.instr.uid : -1;
+    }
+    computeValue() {
+    }
+    flush() {
+        super.flush();
+        this.waiting = false;
+        this.startTime = null;
+        this.memMgm.flush();
+    }
+}
+FuMap[FuKind.MEMORY] = (name, kwargs) => new MemoryFU(name, kwargs);
+class Graphics {
+    constructor(emu) {
+        this.emu = emu;
+        this.clk = document.getElementById('clock');
+        this.pc = document.getElementById('pc');
+        this.src = document.getElementById('sourcecode');
+        this.scexec = document.getElementById('scexec');
+        this.rs = document.getElementById('rs');
+        this.reg = document.getElementById('reg');
+        this.cache = document.getElementById('cache');
+        this.rob = document.getElementById('rob');
+        this.scrl_source = document.getElementById('scroll_source');
+        this.scrl_source_tbl = document.getElementById('sourcecode_tbl');
+        this.scrl_exec = document.getElementById('scroll_exec');
+        this.scrl_exec_tbl = document.getElementById('exec_tbl');
+    }
+    paint() {
+        this.clk.innerHTML = String(this.emu.clock);
+        this.pc.innerHTML = String(this.emu.pc);
+        this.src.innerHTML = this.renderSrc();
+        this.scexec.innerHTML = this.renderExec();
+        this.rs.innerHTML = this.renderRS();
+        this.reg.innerHTML = this.renderREG();
+        this.cache.innerHTML = this.renderCache();
+        this.rob.innerHTML = this.renderRob();
+        this.scroll();
+    }
+    scroll() {
+        this.scrl_exec.scrollTop = this.scrl_exec_tbl.clientHeight;
+        let row = this.scrl_source_tbl.querySelector('.current');
+        if (row === undefined || row === null)
+            return;
+        let innerTop = row.getBoundingClientRect().top;
+        let outerTop = this.scrl_source_tbl.getBoundingClientRect().top;
+        let paneHeight = this.scrl_source.clientHeight;
+        let scroll = (innerTop - outerTop) - ((paneHeight - row.clientHeight) / 2);
+        this.scrl_source.scrollTop = scroll;
+    }
+    renderSrc() {
+        let rowid = 0;
+        let html = [];
+        for (let i of this.emu.program) {
+            html.push([
+                '<tr',
+                (this.emu.pc === rowid ? ' class="current"' : ''),
+                '>',
+                '<td>', String(rowid++), '</td>',
+                '<td>', i.toString(), '</td>',
+            ]);
+        }
+        html.push([
+            '<tr',
+            (this.emu.pc === this.emu.program.length ? ' class="current"' : ''),
+            '>',
+            '<td>', String(this.emu.program.length), '</td>',
+            '<td>', 'EOF', '</td>',
+        ]);
+        return Array.prototype.concat.apply([], html).join('');
+    }
+    renderExec() {
+        let rowid = 0;
+        let html = [];
+        for (let i of this.emu.hist) {
+            html.push([
+                '<tr',
+                i.flushed ? ' class="flushed"' : '',
+                '>',
+                '<td>', String(rowid++), '</td>',
+                '<td>', i.toString(), '</td>',
+                '<td', (i.issued === this.emu.clock ? ' class="new-val"' : ''), '>',
+                String(i.issued >= 0 ? i.issued : ''), '</td>',
+                '<td', (i.executed === this.emu.clock ? ' class="new-val"' : ''), '>',
+                String(i.executed >= 0 ? i.executed : ''), '</td>',
+                '<td', (i.written === this.emu.clock ? ' class="new-val"' : ''), '>',
+                String(i.written >= 0 ? i.written : ''), '</td>',
+                '<td', (i.committed === this.emu.clock ? ' class="new-val"' : ''), '>',
+                String(i.committed >= 0 ? i.committed : ''), '</td>',
+                '</tr>',
+            ]);
+        }
+        return Array.prototype.concat.apply([], html).join('');
+    }
+    renderRS() {
+        let html = [];
+        for (let f of this.emu.FUs) {
+            let instr = f.getInstr();
+            html.push([
+                '<tr>',
+                '<td>', f.name, '</td>',
+                '<td', (f.isBusy() ? ' class="busy"' : ''), '></td>',
+            ], (instr !== null ? [
+                '<td>', instr.op.toString(), '</td>',
+                '<td>', (instr.qj === null ? String(instr.vj) : ''), '</td>',
+                '<td>', (instr.qk === null ? String(instr.vk) : ''), '</td>',
+                '<td>', (instr.qj !== null ? instr.qj : ''), '</td>',
+                '<td>', (instr.qk !== null ? instr.qk : ''), '</td>',
+                '<td>', (instr.tag !== null ? instr.tag : ''), '</td>',
+                '<td>', f.kind !== FuKind.MEMORY ? f.getDue(this.emu.clock) : '', '</td>'
+            ] : [
+                '<td></td><td></td><td></td><td></td><td></td><td></td><td></td>',
+            ]), ['</tr>']);
+        }
+        return Array.prototype.concat.apply([], html).join('');
+    }
+    renderREG() {
+        let html = [];
+        var body = [];
+        let tagMap = {};
+        if (this.emu.useRob)
+            for (let row of this.emu.ROB.cb)
+                tagMap[row[1].dst] = String(row[0]);
+        html.push(['<caption>Register Status (Q<sub>i</sub>)</caption>'], ['<thead><tr>']);
+        for (let key in this.emu.REG.regs) {
+            html.push(['<th colspan=2>', key, '</th>']);
+            body.push([
+                '<td>',
+                (this.emu.REG.qi[key] === null ? String(this.emu.REG.regs[key]) : this.emu.REG.qi[key]),
+                '</td>',
+                '<td>',
+                key in tagMap ? 'T' + tagMap[key] : '-',
+                '</td>'
+            ]);
+            if (!(body.length % 4)) {
+                html.push(['</tr></thead><tbody class="tech"><tr>'], Array.prototype.concat.apply([], body), ['</tr></tbody>'], ['<thead><tr>']);
+                body = [];
+            }
+        }
+        html.push(['</tr></thead><tbody class="tech"><tr>'], Array.prototype.concat.apply([], body), ['</tr></tbody>']);
+        if (!body.length)
+            html.splice(-4, 4);
+        return Array.prototype.concat.apply([], html).join('');
+    }
+    renderCache() {
+        if (this.emu.cache.size === 0)
+            return "";
+        let html = [];
+        html.push(['<caption>cache</caption><thead><tr><th></th>']);
+        for (let j = 0; j < this.emu.cache.n; j++)
+            html.push(['<th colspan="3">N:', String(j), '</th>']);
+        html.push(['</tr><tr><th></th>']);
+        for (let j = 0; j < this.emu.cache.n; j++)
+            html.push(['<th>addr</th><th>val</th><th>dirty</th>']);
+        html.push(['</tr></thead>']);
+        html.push(['<tbody>']);
+        for (let i = 0; i < this.emu.cache.size / this.emu.cache.n; i++) {
+            html.push(['<tr><td>', String(i), '</td>']);
+            for (let j = 0; j < this.emu.cache.n; j++) {
+                let entry = this.emu.cache._cache[i][j];
+                if (entry[0])
+                    html.push([
+                        '<td>', String(entry[1]), '</td>',
+                        '<td>', String(entry[2]), '</td>',
+                        '<td', entry[3] ? ' class="busy">' : '>', '</td>'
+                    ]);
+                else
+                    html.push(['<td></td><td></td><td></td>']);
+            }
+            html.push(['</tr>']);
+        }
+        html.push(['</tbody>']);
+        html.push([
+            '<tfoot><tr><td colspan=7>',
+            'hit&nbsp;',
+            String(Math.round(this.emu.cache.readHit / (this.emu.cache.readHit + this.emu.cache.readMiss) * 100)),
+            '% - evictions ', String(this.emu.cache.evictions),
+            '</td></tr><tfoot>'
+        ]);
+        return Array.prototype.concat.apply([], html).join('');
+    }
+    renderRob() {
+        if (!this.emu.useRob)
+            return '';
+        let html = [];
+        html.push(['<caption>reorder buffer</caption><thead><tr><th>tag</th><th>Instruction</th><th>dst</th><th>val</th><th>rdy</th><th>row</th></tr></thead><tbody>']);
+        for (let row of this.emu.ROB.cb) {
+            html.push([
+                '<tr>',
+                '<td>', String(row[0]), '</td>',
+                '<td>', String(row[1].instr), '</td>',
+                '<td>', row[1].dst, '</td>',
+                '<td>', String(row[1].value), '</td>',
+                '<td', row[1].ready !== null ? ' class="busy">' : '>', '</td>',
+                '<td>', String(row[1].instr.rowid), '</td>',
+                '</tr>',
+            ]);
+        }
+        for (let i = 0; i < this.emu.ROB.cb.buffer.length - this.emu.ROB.cb.availableData; i++) {
+            let tag = (this.emu.ROB.cb.tail + i) % this.emu.ROB.cb.buffer.length;
+            html.push([
+                '<tr><td>',
+                String(tag),
+                '</td><td></td><td></td><td></td><td></td><td></td></tr>',
+            ]);
+        }
+        html.push(['</tbody>']);
+        return Array.prototype.concat.apply([], html).join('');
+    }
+}
+class RawInstruction {
+    constructor(op, src0, src1, dst, rowid) {
+        this.op = op;
+        this.src0 = src0;
+        this.src1 = src1;
+        this.dst = dst;
+        this.rowid = rowid;
+        this.issued = -1;
+        this.executed = -1;
+        this.written = -1;
+        this.committed = -1;
+        this.flushed = false;
+    }
+    toString() {
+        if (this.op === Op.LOAD)
+            return `${OpString[this.op]} ${this.src0},${this.dst}`;
+        return `${OpString[this.op]} ${this.src0}` +
+            `${this.src1 ? ',' : ''}${this.src1}` +
+            `${this.dst ? ',' : ''}${this.dst}`;
+    }
+}
+class Instruction {
+    constructor(op, dst, pc, uid, vj = 0, vk = 0, qj = null, qk = null, tag = null) {
+        this.op = op;
+        this.dst = dst;
+        this.pc = pc;
+        this.uid = uid;
+        this.vj = vj;
+        this.vk = vk;
+        this.qj = qj;
+        this.qk = qk;
+        this.tag = tag;
+    }
+    kind() {
+        return OpKindMap[this.op];
+    }
+}
+var Op;
+(function (Op) {
+    Op[Op["ADD"] = 0] = "ADD";
+    Op[Op["SUB"] = 1] = "SUB";
+    Op[Op["MUL"] = 2] = "MUL";
+    Op[Op["DIV"] = 3] = "DIV";
+    Op[Op["LOAD"] = 4] = "LOAD";
+    Op[Op["STORE"] = 5] = "STORE";
+    Op[Op["JMP"] = 6] = "JMP";
+    Op[Op["JZ"] = 7] = "JZ";
+    Op[Op["JNZ"] = 8] = "JNZ";
+})(Op || (Op = {}));
+let OpKindMap = {};
+OpKindMap[Op.ADD] = FuKind.ADDER;
+OpKindMap[Op.SUB] = FuKind.ADDER;
+OpKindMap[Op.MUL] = FuKind.MULTIPLIER;
+OpKindMap[Op.DIV] = FuKind.DIVIDER;
+OpKindMap[Op.LOAD] = FuKind.MEMORY;
+OpKindMap[Op.STORE] = FuKind.MEMORY;
+OpKindMap[Op.JMP] = FuKind.IU;
+OpKindMap[Op.JZ] = FuKind.IU;
+OpKindMap[Op.JNZ] = FuKind.IU;
+let OpString = {};
+OpString[Op.ADD] = "ADD";
+OpString[Op.SUB] = "SUB";
+OpString[Op.MUL] = "MUL";
+OpString[Op.DIV] = "DIV";
+OpString[Op.LOAD] = "LDR";
+OpString[Op.STORE] = "STR";
+OpString[Op.JMP] = "JMP";
+OpString[Op.JZ] = "JZ";
+OpString[Op.JNZ] = "JNZ";
+let StringOp = {};
+StringOp['ADD'] = Op.ADD;
+StringOp['SUB'] = Op.SUB;
+StringOp['MUL'] = Op.MUL;
+StringOp['DIV'] = Op.DIV;
+StringOp['LDR'] = Op.LOAD;
+StringOp['STR'] = Op.STORE;
+StringOp['JMP'] = Op.JMP;
+StringOp['JZ'] = Op.JZ;
+StringOp['JNZ'] = Op.JNZ;
+let InstrLen = {};
+InstrLen['LDR'] = 2;
+InstrLen['STR'] = 2;
+InstrLen['JMP'] = 1;
+InstrLen['JZ'] = 1;
+InstrLen['JNZ'] = 1;
+function parse(src, rsize) {
+    let prg = [];
+    let rowid = 0;
+    for (let row of src.split("\n")) {
+        let crow = row.trim();
+        if (!crow.length || crow.lastIndexOf(';', 0) === 0)
+            continue;
+        let rawcmd = crow.split(' ', 1)[0];
+        let cmd = rawcmd.trim().toUpperCase();
+        if (!(cmd in StringOp))
+            throw new Error(`[${crow}] ${cmd} is not a valid instruction`);
+        let args = crow.substring(rawcmd.length).replace(/\s+/g, '').split(',');
+        if (cmd in InstrLen && InstrLen[cmd] !== args.length)
+            throw new Error(`[${crow}] ${cmd} expects ${InstrLen[cmd]} operands, got ${args.length}`);
+        if (!(cmd in InstrLen) && args.length !== 3)
+            throw new Error(`[${crow}] ${cmd} expects 3 operands, got ${args.length}`);
+        for (let arg of args) {
+            let v = isNaN(parseInt(arg, 10));
+            let reg = parseInt(arg.substring(1, arg.length), 10);
+            if (!(!v || (arg[0] === 'R' && !isNaN(reg) && reg >= 0 && reg < rsize)))
+                throw new Error(`[${crow}] ${arg} is not a valid register`);
+        }
+        if (StringOp[cmd] === Op.LOAD)
+            prg.push(new RawInstruction(StringOp[cmd], args[0], '0', args[1], rowid++));
+        else
+            prg.push(new RawInstruction(StringOp[cmd], args[0], args.length > 1 ? args[1] : "", args.length === 3 ? args[2] : "", rowid++));
+    }
+    return prg;
+}
+class MemConf {
+    constructor(readLatency, writeLatency) {
+        this.readLatency = readLatency;
+        this.writeLatency = writeLatency;
+    }
+}
+class Memory {
+    constructor(c) {
+        this.mem = {};
+        this.currentOpComplete = -1;
+        this.readLatency = 0;
+        this.writeLatency = 0;
+        this.readLatency = c.readLatency;
+        this.writeLatency = c.writeLatency;
+    }
+    flush() {
+        this.currentOpComplete = -1;
+    }
+    isBusy() {
+        return this.currentOpComplete !== -1;
+    }
+    read(clock, loc) {
+        if (this.currentOpComplete === -1) {
+            this.currentOpComplete = clock + this.readLatency;
+        }
+        else if (clock >= this.currentOpComplete) {
+            this.currentOpComplete = -1;
+            return this._read(loc);
+        }
+        return null;
+    }
+    write(clock, loc, value) {
+        if (this.currentOpComplete === -1) {
+            this.currentOpComplete = clock + this.writeLatency;
+        }
+        else if (clock === this.currentOpComplete) {
+            this.currentOpComplete = -1;
+            this._write(loc, value);
+            return true;
+        }
+        return false;
+    }
+    _read(loc) {
+        if (this.mem[loc] === undefined) {
+            this.mem[loc] = Math.floor(Math.random() * 100);
+        }
+        return this.mem[loc];
+    }
+    _write(loc, value) {
+        this.mem[loc] = value;
+    }
+}
+let XCacheMap = {};
+function XCacheFactory(name, c) {
+    if (name in XCacheMap)
+        return XCacheMap[name](c);
+    else
+        return new XCache(c);
+}
+class XCache {
+    constructor(c) {
+        this._cache = {};
+        this.readMiss = 0;
+        this.readHit = 0;
+        this.evictions = 0;
+        this.working = false;
+        if (c['mem'] !== undefined)
+            this.mem = c.mem;
+    }
+    isBusy() {
+        return this.working;
+    }
+    flush() {
+        this.working = false;
+    }
+    read(clock, loc) {
+        let value = this.mem.read(clock, loc);
+        this.working = value === null;
+        return value;
+    }
+    write(clock, loc, value) {
+        let finished = this.mem.write(clock, loc, value);
+        this.working = !finished;
+        return finished;
+    }
+}
+XCacheMap["no-cache"] = (c) => new XCache(c);
+class NWayCache extends XCache {
+    constructor(c) {
+        super(c);
+        this.currentOpComplete = -1;
+        this.miss = false;
+        this.writing = null;
+        this.n = 'n' in c ? c['n'] : 2;
+        this.size = 'size' in c ? c['size'] : 4;
+        this.isWriteBack = 'iswriteback' in c ? c['iswriteback'] : false;
+        this.readLatency = 'readLatency' in c ? c['readLatency'] : 0;
+        this.writeLatency = 'writeLatency' in c ? c['readLatency'] : 0;
+        if (this.size % this.n !== 0)
+            throw new Error("Invalid (N,Size) paraemters combination");
+        for (let i = 0; i < this.size / this.n; i++) {
+            this._cache[i] = [];
+            for (let j = 0; j < this.n; j++)
+                this._cache[i].push([false, 0, 0, false]);
+        }
+    }
+    flush() {
+        super.flush();
+        this.writing = null;
+        this.currentOpComplete = -1;
+        this.miss = false;
+    }
+    isBusy() {
+        return this.currentOpComplete !== -1;
+    }
+    findValue(loc) {
+        let i = loc % this.n;
+        for (let j = 0; j < this.n; j++) {
+            let entry = this._cache[i][j];
+            if (entry[0] && entry[1] === loc) {
+                return entry[2];
+            }
+        }
+        return null;
+    }
+    setValue(loc, value, dirty = false) {
+        let i = loc % this.n;
+        for (let j = 0; j < this.n; j++) {
+            let entry = this._cache[i][j];
+            if (entry[0] && entry[1] === loc) {
+                this._cache[i][j] = [true, loc, value, dirty];
+                return null;
+            }
+        }
+        for (let j = 0; j < this.n; j++) {
+            let entry = this._cache[i][j];
+            if (!entry[0]) {
+                this._cache[i][j] = [true, loc, value, dirty];
+                return null;
+            }
+        }
+        let j = Math.floor(Math.random() * this.n);
+        let entry = this._cache[i][j];
+        this._cache[i][j] = [true, loc, value, dirty];
+        if (entry[3] === true) {
+            this.evictions++;
+            return entry;
+        }
+        return null;
+    }
+    read(clock, loc) {
+        if (this.currentOpComplete === -1) {
+            this.currentOpComplete = clock + this.readLatency;
+        }
+        if (clock === this.currentOpComplete) {
+            let value = this.findValue(loc);
+            if (value !== null) {
+                this.currentOpComplete = -1;
+                this.readHit++;
+                return value;
+            }
+            else {
+                this.readMiss++;
+                this.miss = true;
+            }
+        }
+        if (this.miss) {
+            let value = this.mem.read(clock, loc);
+            if (value !== null) {
+                this.miss = false;
+                let evicted = this.setValue(loc, value);
+                if (evicted !== null && this.isWriteBack) {
+                    this.result = value;
+                    this.writing = evicted;
+                }
+                else {
+                    this.currentOpComplete = -1;
+                    return value;
+                }
+            }
+        }
+        if (this.writing !== null) {
+            if (this.mem.write(clock, this.writing[1], this.writing[2])) {
+                let retval = this.result;
+                this.result = null;
+                this.writing = null;
+                this.currentOpComplete = -1;
+                return retval;
+            }
+        }
+        return null;
+    }
+    write(clock, loc, value) {
+        if (this.currentOpComplete === -1)
+            this.currentOpComplete = clock + this.writeLatency;
+        if (clock < this.currentOpComplete)
+            return false;
+        if (clock === this.currentOpComplete) {
+            let evicted = this.setValue(loc, value, true);
+            if (evicted !== null && this.isWriteBack) {
+                this.writing = evicted;
+            }
+            if (!this.isWriteBack) {
+                this.writing = [true, loc, value, true];
+            }
+        }
+        if (this.writing !== null) {
+            if (this.mem.write(clock, this.writing[1], this.writing[2])) {
+                this.writing = null;
+            }
+        }
+        if (this.writing === null) {
+            this.currentOpComplete = -1;
+            return true;
+        }
+        else {
+            return false;
+        }
+    }
+}
+XCacheMap["nwayset"] = (c) => new NWayCache(c);
+var MgmIntState;
+(function (MgmIntState) {
+    MgmIntState[MgmIntState["FREE"] = 0] = "FREE";
+    MgmIntState[MgmIntState["READ"] = 1] = "READ";
+    MgmIntState[MgmIntState["WRITE"] = 2] = "WRITE";
+})(MgmIntState || (MgmIntState = {}));
+;
+class MemoryMGM {
+    constructor(cache, useRob) {
+        this.cache = cache;
+        this.useRob = useRob;
+        this.state = MgmIntState.FREE;
+        this.currFU = '';
+    }
+    flush() {
+        this.state = MgmIntState.FREE;
+        this.currFU = '';
+        this.cache.flush();
+    }
+    read(funame, clock, loc) {
+        if (this.state !== MgmIntState.FREE && funame !== this.currFU)
+            return null;
+        if (this.useRob) {
+            for (let entry of this.rob.cb.reverse()) {
+                if (String(loc) === entry[1].dst)
+                    return entry[1].value;
+            }
+        }
+        if (!this.cache.isBusy()) {
+            this.state = MgmIntState.READ;
+            this.currFU = funame;
+        }
+        if (this.state === MgmIntState.READ) {
+            let value = this.cache.read(clock, loc);
+            if (value !== null)
+                this.state = MgmIntState.FREE;
+            return value;
+        }
+        return null;
+    }
+    write(funame, clock, loc, value, commit = false) {
+        if (this.state !== MgmIntState.FREE && funame !== this.currFU)
+            return false;
+        if (this.useRob && !commit)
+            return true;
+        if (!this.cache.isBusy()) {
+            this.state = MgmIntState.WRITE;
+            this.currFU = funame;
+        }
+        if (this.state === MgmIntState.WRITE) {
+            if (this.cache.write(clock, loc, value)) {
+                this.state = MgmIntState.FREE;
+            }
+            return this.state === MgmIntState.FREE;
+        }
+        return false;
+    }
+}
+class Queue {
+    constructor() {
+        this._store = [];
+    }
+    [Symbol.iterator]() {
+        return this._store[Symbol.iterator]();
+    }
+    push(val) {
+        this._store.push(val);
+    }
+    pop() {
+        return this._store.shift();
+    }
+}
+var Flag;
+(function (Flag) {
+    Flag[Flag["ZF"] = 0] = "ZF";
+    Flag[Flag["NFLAGS"] = 1] = "NFLAGS";
+})(Flag || (Flag = {}));
+class Register {
+    constructor(conf) {
+        this.regs = {};
+        this.qi = {};
+        this.FLAGS = [];
+        this.patcher = function (me, reg) {
+            return [me.regs[reg], me.qi[reg]];
+        };
+        for (let i = 0; i < conf.ints; i++) {
+            this.regs[`R${i}`] = 0;
+            this.qi[`R${i}`] = null;
+        }
+        for (let f = 0; f < conf.floats; f++) {
+            this.regs[`F${f}`] = 0;
+            this.qi[`F${f}`] = null;
+        }
+        for (let f = 0; f < Flag.NFLAGS; f++)
+            this.FLAGS.push(false);
+    }
+    patch(ri, qfunc, uid) {
+        let ins = new Instruction(ri.op, ri.dst, ri.rowid, uid);
+        let value = parseInt(ri.src0, 10);
+        if (isNaN(value)) {
+            let res = qfunc(this, ri.src0), v = res[0], remote = res[1];
+            if (remote === null) {
+                value = v;
+            }
+            else {
+                value = 0;
+                ins.qj = remote;
+            }
+        }
+        ins.vj = value;
+        if (ri.src1.length !== 0) {
+            value = parseInt(ri.src1, 10);
+            if (isNaN(value)) {
+                let res = qfunc(this, ri.src1);
+                let v = res[0], remote = res[1];
+                if (remote === null) {
+                    value = v;
+                }
+                else {
+                    value = 0;
+                    ins.qk = remote;
+                }
+            }
+            ins.vk = value;
+        }
+        return ins;
+    }
+    setProducer(inst, rs) {
+        if (this.regs[inst.dst] === undefined)
+            return;
+        this.regs[inst.dst] = 0;
+        this.qi[inst.dst] = rs;
+    }
+    readCDB(cdb) {
+        for (let msg of cdb) {
+            if (this.qi[msg.dst] === msg.rsName) {
+                this.regs[msg.dst] = msg.result;
+                this.qi[msg.dst] = null;
+            }
+        }
+    }
+}
+class Rob {
+    constructor(size, memMgm, IU) {
+        this.size = size;
+        this.memMgm = memMgm;
+        this.IU = IU;
+        this.isFull = () => this.cb.isFull();
+        this.isEmpty = () => this.cb.isEmpty();
+        this.nextTag = () => String(this.cb.nextTag());
+        this.push = (r) => this.cb.push(r);
+        this.pop = () => this.cb.pop();
+        this.patcher = function (me) {
+            return function (registry, reg) {
+                for (let item of me.cb.reverse()) {
+                    let tag = item[0], entry = item[1];
+                    if (reg === entry.dst) {
+                        if (entry.ready !== null) {
+                            return [entry.value, null];
+                        }
+                        else {
+                            return [0, String(tag)];
+                        }
+                    }
+                }
+                return [registry.regs[reg], null];
+            };
+        }(this);
+        this.cb = new CircularBuffer(size);
+        memMgm.rob = this;
+    }
+    flush() {
+        this.cb = new CircularBuffer(this.size);
+        this.memMgm.rob = this;
+    }
+    readCDB(clock, cdb) {
+        for (let msg of cdb) {
+            let tag = Number(msg.rsName);
+            this.cb.buffer[tag].dst = msg.dst;
+            this.cb.buffer[tag].value = msg.result;
+            this.cb.buffer[tag].ready = clock;
+        }
+    }
+    setFlags(entry, reg) {
+        reg.FLAGS[Flag.ZF] = entry.value === 0;
+    }
+    commit(clock, reg) {
+        if (this.isEmpty())
+            return new CommitResponse();
+        let head = this.cb.buffer[this.cb.head];
+        if (head.ready === null || head.ready >= clock)
+            return new CommitResponse();
+        if ([FuKind.ADDER, FuKind.MULTIPLIER].indexOf(OpKindMap[head.instr.op]) !== -1)
+            this.setFlags(head, reg);
+        if (OpKindMap[head.instr.op] === FuKind.IU)
+            return new CommitResponse(this.cb.pop().uid, this.IU.validateChoice(head, reg.FLAGS));
+        if (head.dst === '') {
+            return new CommitResponse(this.cb.pop().uid);
+        }
+        else if (head.dst in reg.regs) {
+            reg.regs[head.dst] = head.value;
+            return new CommitResponse(this.cb.pop().uid);
+        }
+        else {
+            if (this.memMgm.write('ROB', clock, Number(head.dst), head.value, true))
+                return new CommitResponse(this.cb.pop().uid);
+        }
+        return new CommitResponse();
+    }
+}
+class RobEntry {
+    constructor(instr, dst, uid = -1, value = 0, ready = null) {
+        this.instr = instr;
+        this.dst = dst;
+        this.uid = uid;
+        this.value = value;
+        this.ready = ready;
+    }
+}
+class CommitResponse {
+    constructor(uid = -1, flush = -1) {
+        this.uid = uid;
+        this.flush = flush;
+    }
+}
+class BranchPredictor {
+    constructor(N = 0, K = 0) {
+        this.N = N;
+        this.K = K;
+        this.speculative = true;
+    }
+    real(instr, flags) {
+        if ((instr.op === Op.JZ && flags[Flag.ZF]) || (instr.op === Op.JNZ && !flags[Flag.ZF]))
+            return Number(instr.src0);
+        else if (instr.op === Op.JMP)
+            return Number(instr.src0);
+        else
+            return instr.rowid + 1;
+    }
+    validateChoice(head, flags) {
+        let correct = this.real(head.instr, flags);
+        return correct !== head.value ? correct : -1;
+    }
+}
+let BpMap = {};
+class NonSpeculative extends BranchPredictor {
+    constructor() {
+        super(...arguments);
+        this.speculative = false;
+    }
+    nextPc(instr, flags) {
+        return this.real(instr, flags);
+    }
+}
+BpMap['non'] = (n, k) => new NonSpeculative(n, k);
+class AlwaysTaken extends BranchPredictor {
+    nextPc(instr, flags) {
+        return Number(instr.src0);
+    }
+}
+BpMap['at'] = (n, k) => new AlwaysTaken(n, k);
+class AlwaysNotTaken extends BranchPredictor {
+    nextPc(instr, flags) {
+        return instr.rowid + 1;
+    }
+}
+BpMap['ant'] = (n, k) => new AlwaysNotTaken(n, k);
+class BTFNT extends BranchPredictor {
+    nextPc(instr, flags) {
+        let jaddr = Number(instr.src0);
+        return jaddr < instr.rowid ? jaddr : instr.rowid + 1;
+    }
+}
+BpMap['btfnt'] = (n, k) => new BTFNT(n, k);
+class NBit extends BranchPredictor {
+    constructor(N, K) {
+        super(N, K);
+        this.N = N;
+        this.K = K;
+        this.BHT = [];
+        this.LastPred = [];
+        this.AddrTag = [];
+        for (let k = 0; k < K; k++) {
+            this.BHT.push(N / 2);
+            this.LastPred.push(false);
+            this.AddrTag.push(-1);
+        }
+    }
+    reset(idx) {
+        this.BHT[idx] = this.N / 2;
+        this.LastPred[idx] = false;
+        this.AddrTag[idx] = -1;
+    }
+    nextPc(instr, flags) {
+        let idx = instr.rowid % this.K;
+        if (this.AddrTag[idx] !== instr.rowid) {
+            this.reset(idx);
+            this.AddrTag[idx] = instr.rowid;
+        }
+        let pval = this.BHT[idx];
+        this.LastPred[idx] = pval > this.N / 2 || (pval === this.N / 2 && this.LastPred[idx]);
+        return this.LastPred[idx] ? Number(instr.src0) : instr.rowid + 1;
+    }
+    validateChoice(head, flags) {
+        let ret = super.validateChoice(head, flags);
+        let idx = head.instr.rowid % this.K;
+        if (this.AddrTag[idx] === head.instr.rowid) {
+            this.BHT[idx] += this.real(head.instr, flags) === Number(head.instr.src0) ? 1 : -1;
+            this.BHT[idx] = Math.max(0, Math.min(this.BHT[idx], this.N));
+        }
+        return ret;
+    }
+}
+BpMap['nbit'] = (n, k) => new NBit(n, k);
+function clone(obj) {
+    const copy = new obj.constructor();
+    Object.assign(copy, obj);
+    return copy;
+}
+let EXAMPLES = {
+    'Arithmetic speculation': `MUL 1,5,R0
+MUL 2,5,R1
+ADD 1,R5,R5
+MUL 4,5,R3
+SUB R5,5,R6
+JNZ 0
+`,
+    'Cache': `; INIT VALUES
+STR 0,0
+STR 1,1
+
+; FLUSH CACHE (4LOC)
+STR 0,2
+STR 0,3
+STR 0,4
+STR 0,5
+
+; MAIN
+LDR 0,R0
+LDR 1,R1
+ADD R0,R1,R2
+ADD R5,1,R5
+MUL R0,R1,R3
+SUB R5,4,R6
+STR R3,1
+STR R2,0
+JNZ 6
+`,
+};
+function displayExamples() {
+    let lst = document.getElementById('exlist');
+    let html = [];
+    for (let ex in EXAMPLES) {
+        html.push([
+            '<li><a data-action="load-example" data-value="', ex, '">', ex, '</a></li>'
+        ]);
+    }
+    lst.innerHTML = Array.prototype.concat.apply([], html).join('');
+    for (let btn of document.querySelectorAll('[data-action="load-example"]')) {
+        btn.addEventListener('click', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            let example_id = e.target.dataset.value;
+            raw_src.value = EXAMPLES[example_id];
+        });
+    }
+    for (let ex in EXAMPLES) {
+        raw_src.value = EXAMPLES[ex];
+        break;
+    }
+}
+function getActiveTab() {
+    return document.getElementsByClassName('active')[0].id;
+}
+function setActiveTab(id) {
+    let next = document.getElementById(id);
+    if (!next)
+        return;
+    let tabs = document.getElementsByClassName('active');
+    if (tabs.length)
+        tabs[0].classList.remove('active');
+    next.classList.add('active');
+}
+function initTabs() {
+    let tab = window.location.hash.substr(1);
+    setActiveTab(tab);
+    for (let link of document.querySelectorAll('.tab-link')) {
+        link.addEventListener('click', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            let tabId = e.target.getAttribute('href').replace('#', '');
+            setActiveTab(tabId);
+        });
+    }
+}
+var ISSUE_EXEC_DELAY = true;
+var EXEC_WRITE_DELAY = true;
+let rdy = document.getElementById('rdy');
+let apply_conf = document.getElementById('apply_conf');
+let raw_src = document.getElementById('raw-src');
+let iaddr = document.getElementById('iaddr');
+let iaddrd = document.getElementById('iaddrd');
+let imult = document.getElementById('imult');
+let imultd = document.getElementById('imultd');
+let idiv = document.getElementById('idiv');
+let idivd = document.getElementById('idivd');
+let ireg = document.getElementById('ri');
+let freg = document.getElementById('rf');
+let ied = document.getElementById('ied');
+let ewd = document.getElementById('ewd');
+let rl = document.getElementById('rl');
+let wl = document.getElementById('wl');
+let ca = document.getElementById('cache_alg');
+let crl = document.getElementById('crl');
+let cwl = document.getElementById('cwl');
+let nways = document.getElementById('nways');
+let csize = document.getElementById('csize');
+let rsize = document.getElementById('rsize');
+let bp = document.getElementById('bp');
+let nbit_n = document.getElementById('nbit_n');
+let nbit_k = document.getElementById('nbit_k');
+let rst = document.getElementById('reset');
+let conf = document.getElementById('conf');
+let play = document.getElementById('play');
+let pausebtn = document.getElementById('pause');
+let one_step = document.getElementById('step');
+let speed = document.getElementById('speed');
+function main() {
+    displayExamples();
+    initTabs();
+    let resetFunc = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        pause();
+        setup();
+    };
+    let stepFunc = () => {
+        pause();
+        if (STEP)
+            STEP();
+        else
+            alert('Please load a valid program first.');
+    };
+    rdy.onclick = apply_conf.onclick = rst.onclick = resetFunc;
+    play.onclick = playloop;
+    pausebtn.onclick = pause;
+    one_step.onclick = stepFunc;
+    document.addEventListener('keydown', (e) => {
+        if (e.srcElement && e.srcElement.id === 'raw-src')
+            return;
+        if (getActiveTab() !== 'tab-exec')
+            return;
+        switch (e.keyCode) {
+            case 34:
+            case 39:
+            case 78:
+            case 83:
+                stepFunc();
+                break;
+            case 33:
+            case 32:
+            case 13:
+                if (LOOP !== -1)
+                    pause();
+                else
+                    playloop();
+                break;
+            case 116:
+            case 27:
+            case 82:
+                resetFunc(e);
+                break;
+            case 187:
+            case 221:
+                speed.value = String(parseInt(speed.value, 10) + safeInt(speed.getAttribute('step'), 1));
+                break;
+            case 189:
+            case 219:
+                speed.value = String(parseInt(speed.value, 10) - safeInt(speed.getAttribute('step'), 1));
+                break;
+        }
+    });
+    setup();
+}
+function playloop() {
+    document.body.classList.add('playing');
+    if (STEP) {
+        if (STEP())
+            LOOP = setTimeout(playloop, (10 / Number(speed.value) * 1000));
+    }
+    else {
+        alert('Please load a valid program first.');
+    }
+}
+function pause() {
+    document.body.classList.remove('playing');
+    if (LOOP !== -1)
+        clearTimeout(LOOP);
+    LOOP = -1;
+}
+let safeInt = (s, fallback = 0) => isNaN(parseInt(s, 10)) ? fallback : parseInt(s, 10);
+var STEP = null;
+var LOOP = -1;
+function setup() {
+    STEP = null;
+    let program;
+    try {
+        program = parse(raw_src.value, safeInt(ireg.value, 0));
+    }
+    catch (err) {
+        alert(err.message);
+        return;
+    }
+    document.body.classList.remove('playing');
+    ISSUE_EXEC_DELAY = ied.checked;
+    EXEC_WRITE_DELAY = ewd.checked;
+    let MEM = new Memory(new MemConf(safeInt(rl.value, 1), safeInt(wl.value, 2)));
+    let ca_val = ca.options[ca.selectedIndex].value;
+    let CACHE = XCacheFactory(ca_val.split('_')[0], {
+        'mem': MEM,
+        'n': safeInt(nways.value, 2),
+        'size': safeInt(csize.value, 4),
+        'readLatency': safeInt(crl.value, 0),
+        'writeLatency': safeInt(cwl.value, 0),
+        'iswriteback': ca_val.split('_')[1] === 'wb',
+    });
+    let memMgm = new MemoryMGM(CACHE, safeInt(rsize.value, 0) > 0);
+    let bp_val = bp.options[bp.selectedIndex].value;
+    let emu = new Emulator([
+        [FuKind.ADDER, 'ADDR', safeInt(iaddr.value, 3), { duration: safeInt(iaddrd.value, 2) }],
+        [FuKind.MULTIPLIER, 'MULT', safeInt(imult.value, 3), { duration: safeInt(imultd.value, 4) }],
+        [FuKind.DIVIDER, 'DIV', safeInt(idiv.value, 3), { duration: safeInt(idivd.value, 6) }],
+        [FuKind.MEMORY, 'MEM', 1, { 'memMgm': memMgm, duration: safeInt(iaddrd.value, 2) }],
+    ], { ints: safeInt(ireg.value), floats: safeInt(freg.value) }, safeInt(rsize.value, 0), CACHE, memMgm, BpMap[bp_val](safeInt(nbit_n.value, 2), safeInt(nbit_k.value, 4)), program);
+    let g = new Graphics(emu);
+    g.paint();
+    STEP = () => {
+        var notEof = emu.step();
+        g.paint();
+        return notEof;
+    };
+}
+main();
+//# sourceMappingURL=archetypum.js.map        </script>
+    </body>
+</html>
